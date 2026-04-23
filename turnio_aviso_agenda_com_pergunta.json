@@ -1,0 +1,288 @@
+{
+  "name": "Turn.io - Aviso Agenda com Pergunta (IMIP)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📲 IMIP – Aviso Agenda com Pergunta\n\n**Template:** `aviso_agenda_com_pergunta`\n**Namespace:** `266c277a_f881_42da_bf31_44dc4b94cd5e`\n**Idioma:** pt_BR\n\n---\n\n### Mensagem enviada ao paciente:\n\n> *Olá tudo bem? Esse é o WhatsApp do IMIP*\n>\n> *Queremos falar com você sobre um agendamento no IMIP.*\n>\n> *Você aceita receber nossas mensagens?*\n>\n> ─────────────────\n> mensagem automática do IMIP\n>\n> [ **Sim** ]  [ **Não** ]\n\n---\n\n### Como usar:\n\nEnvie um `POST` para o webhook com apenas o número:\n\n```json\n{ \"wa_id\": \"5511999999999\" }\n```\n\n### Resposta de sucesso:\n```json\n{\n  \"success\": true,\n  \"message_id\": \"gBEGkYiEB1VXAg...\",\n  \"wa_id\": \"5511999999999\"\n}\n```\n\n---\n⚠️ Regra da API Oficial Meta:\nEssa mensagem só pode ser enviada fora\nda janela de 24h. Dentro da janela, é\npossível enviar mensagens livres.",
+        "height": 560,
+        "width": 380,
+        "color": 5
+      },
+      "id": "c1d2e3f4-0009-0009-0009-000000000009",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -380]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turn-aviso-agenda",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c1d2e3f4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "turn-io-aviso-agenda-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-wa-id",
+              "leftValue": "={{ $json.body.wa_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1d2e3f4-0002-0002-0002-000000000002",
+      "name": "Tem wa_id?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-payload",
+              "name": "payload",
+              "value": "={{ {\n  recipient_type: 'individual',\n  to: $json.body.wa_id,\n  type: 'template',\n  template: {\n    namespace: '266c277a_f881_42da_bf31_44dc4b94cd5e',\n    name: 'aviso_agenda_com_pergunta',\n    language: {\n      code: 'pt_BR',\n      policy: 'deterministic'\n    },\n    components: []\n  }\n} }}",
+              "type": "object"
+            },
+            {
+              "id": "assign-wa-id",
+              "name": "wa_id",
+              "value": "={{ $json.body.wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1d2e3f4-0003-0003-0003-000000000003",
+      "name": "Montar Template",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "c1d2e3f4-0004-0004-0004-000000000004",
+      "name": "Enviar Template Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SEU_CREDENTIAL_ID",
+          "name": "Turn.io API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-status-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "cond-status-max",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 201,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1d2e3f4-0005-0005-0005-000000000005",
+      "name": "Enviado com sucesso?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'Template enviado com sucesso',\n  template: 'aviso_agenda_com_pergunta',\n  message_id: $json.body.messages && $json.body.messages[0] ? $json.body.messages[0].id : null,\n  wa_id: $('Montar Template').item.json.wa_id\n}) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c1d2e3f4-0006-0006-0006-000000000006",
+      "name": "Responder: Template Enviado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  error: 'Falha ao enviar template via Turn.io',\n  statusCode: $json.statusCode,\n  detalhes: $json.body,\n  wa_id: $('Montar Template').item.json.wa_id,\n  dica: $json.statusCode === 470 ? 'Contato bloqueado ou número inválido' : $json.statusCode === 1006 ? 'Usuário não está disponível no WhatsApp' : 'Verifique o token e o namespace do template'\n}) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "c1d2e3f4-0007-0007-0007-000000000007",
+      "name": "Responder: Erro Turn.io",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": false, \"error\": \"Campo 'wa_id' é obrigatório. Informe o número no formato internacional sem '+' (ex: 5581999999999).\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "c1d2e3f4-0008-0008-0008-000000000008",
+      "name": "Responder: wa_id ausente",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 440]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Tem wa_id?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem wa_id?": {
+      "main": [
+        [
+          {
+            "node": "Montar Template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: wa_id ausente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Template": {
+      "main": [
+        [
+          {
+            "node": "Enviar Template Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Template Turn.io": {
+      "main": [
+        [
+          {
+            "node": "Enviado com sucesso?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviado com sucesso?": {
+      "main": [
+        [
+          {
+            "node": "Responder: Template Enviado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: Erro Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "turn-io-aviso-agenda-imip"
+}

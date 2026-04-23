@@ -1,0 +1,272 @@
+{
+  "name": "Turn.io - Enviar Mensagem",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📤 Turn.io – Enviar Mensagem\n\n**Endpoint:** `POST /webhook/turn-enviar-mensagem`\n\n---\n\n### 💬 Texto simples\n```json\n{\n  \"wa_id\": \"5511999999999\",\n  \"tipo\": \"texto\",\n  \"texto\": \"Olá! Tudo bem?\"\n}\n```\n\n### 🖼️ Mídia (imagem/audio/video/documento)\n```json\n{\n  \"wa_id\": \"5511999999999\",\n  \"tipo\": \"imagem\",\n  \"midia_id\": \"ID_DA_MIDIA\",\n  \"midia_legenda\": \"Legenda opcional\"\n}\n```\n\n### 📋 Template\n```json\n{\n  \"wa_id\": \"5511999999999\",\n  \"tipo\": \"template\",\n  \"template_namespace\": \"seu-namespace\",\n  \"template_nome\": \"nome_do_template\",\n  \"template_idioma\": \"pt_BR\",\n  \"template_componentes\": [\n    {\n      \"type\": \"body\",\n      \"parameters\": [\n        { \"type\": \"text\", \"text\": \"João\" }\n      ]\n    }\n  ]\n}\n```\n\n### 🔘 Interativo (botões)\n```json\n{\n  \"wa_id\": \"5511999999999\",\n  \"tipo\": \"interativo\",\n  \"interativo\": {\n    \"type\": \"button\",\n    \"body\": { \"text\": \"Escolha uma opção:\" },\n    \"action\": {\n      \"buttons\": [\n        { \"type\": \"reply\", \"reply\": { \"id\": \"sim\", \"title\": \"✅ Sim\" } },\n        { \"type\": \"reply\", \"reply\": { \"id\": \"nao\", \"title\": \"❌ Não\" } }\n      ]\n    }\n  }\n}\n```\n\n---\n⚠️ Credencial: **Turn.io API Token** (Header Auth)",
+        "height": 780,
+        "width": 400,
+        "color": 5
+      },
+      "id": "b1c2d3e4-0009-0009-0009-000000000009",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -460]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turn-enviar-mensagem",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1c2d3e4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "turn-io-enviar-mensagem-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-wa-id",
+              "leftValue": "={{ $json.body.wa_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1c2d3e4-0002-0002-0002-000000000002",
+      "name": "Tem wa_id?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst wa_id = body.wa_id;\nconst tipo = (body.tipo || 'texto').toLowerCase();\n\nlet payload = {\n  recipient_type: 'individual',\n  to: wa_id\n};\n\nif (tipo === 'texto' || tipo === 'text') {\n  payload.type = 'text';\n  payload.text = { body: body.texto || body.text || '' };\n  if (body.preview_url) payload.preview_url = body.preview_url;\n\n} else if (tipo === 'template') {\n  payload.type = 'template';\n  payload.template = {\n    namespace: body.template_namespace || '',\n    name: body.template_nome || '',\n    language: {\n      code: body.template_idioma || 'pt_BR',\n      policy: 'deterministic'\n    },\n    components: body.template_componentes || []\n  };\n\n} else if (tipo === 'imagem' || tipo === 'image') {\n  payload.type = 'image';\n  payload.image = { id: body.midia_id || '' };\n  if (body.midia_legenda) payload.image.caption = body.midia_legenda;\n\n} else if (tipo === 'audio') {\n  payload.type = 'audio';\n  payload.audio = { id: body.midia_id || '' };\n\n} else if (tipo === 'video') {\n  payload.type = 'video';\n  payload.video = { id: body.midia_id || '' };\n  if (body.midia_legenda) payload.video.caption = body.midia_legenda;\n\n} else if (tipo === 'documento' || tipo === 'document') {\n  payload.type = 'document';\n  payload.document = { id: body.midia_id || '' };\n  if (body.midia_legenda) payload.document.caption = body.midia_legenda;\n\n} else if (tipo === 'sticker') {\n  payload.type = 'sticker';\n  payload.sticker = { id: body.midia_id || '' };\n\n} else if (tipo === 'interativo' || tipo === 'interactive') {\n  payload.type = 'interactive';\n  payload.interactive = body.interativo || body.interactive || {};\n\n} else {\n  // fallback: texto\n  payload.type = 'text';\n  payload.text = { body: body.texto || '' };\n}\n\nreturn [{ json: { payload, wa_id, tipo } }];"
+      },
+      "id": "b1c2d3e4-0003-0003-0003-000000000003",
+      "name": "Construir Body da Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.v1+json"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "b1c2d3e4-0004-0004-0004-000000000004",
+      "name": "Enviar Mensagem Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SEU_CREDENTIAL_ID",
+          "name": "Turn.io API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-status-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 201,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            },
+            {
+              "id": "cond-status-min",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b1c2d3e4-0005-0005-0005-000000000005",
+      "name": "Mensagem enviada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Mensagem enviada com sucesso', message_id: $json.body.messages && $json.body.messages[0] ? $json.body.messages[0].id : null, wa_id: $('Construir Body da Mensagem').item.json.wa_id, tipo: $('Construir Body da Mensagem').item.json.tipo }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b1c2d3e4-0006-0006-0006-000000000006",
+      "name": "Responder: Mensagem Enviada",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: 'Erro ao enviar mensagem via Turn.io', statusCode: $json.statusCode, detalhes: $json.body, wa_id: $('Construir Body da Mensagem').item.json.wa_id }) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "b1c2d3e4-0007-0007-0007-000000000007",
+      "name": "Responder: Erro Turn.io",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": false, \"error\": \"Campo obrigatório ausente: wa_id (número de telefone no formato internacional, ex: 5511999999999). Campo 'tipo' é opcional (padrão: texto).\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "b1c2d3e4-0008-0008-0008-000000000008",
+      "name": "Responder: wa_id ausente",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 440]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Tem wa_id?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem wa_id?": {
+      "main": [
+        [
+          {
+            "node": "Construir Body da Mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: wa_id ausente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir Body da Mensagem": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensagem Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Mensagem Turn.io": {
+      "main": [
+        [
+          {
+            "node": "Mensagem enviada?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagem enviada?": {
+      "main": [
+        [
+          {
+            "node": "Responder: Mensagem Enviada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: Erro Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "turn-io-enviar-mensagem"
+}

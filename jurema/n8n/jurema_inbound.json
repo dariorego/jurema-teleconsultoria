@@ -1,0 +1,527 @@
+{
+  "name": "JUREMA - Inbound (Turn.io → Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🩺 JUREMA — Webhook inbound\n\n**URL:** `https://n8n.projetosimip.online/webhook/jurema-inbound`\n\n### Fluxo\n1. Turn.io envia webhook → responde 200 OK em paralelo\n2. Extrair dados (Code)\n3. Se evento não tem messages[] → ignora (status update)\n4. Busca conversa `em_atendimento` pelo wa_id no Supabase\n   - **Existe** → grava inbound em `jurema_mensagens` + atualiza `ultima_inbound_at` + encerra\n   - **Não existe** → segue para máquina de estado\n5. Busca paciente + sessão\n6. Code \"Processar Estado JUREMA\" decide próxima mensagem\n7. Monta payload Turn.io (texto/botões/lista) e envia\n8. Preserva contexto (Set) — processTurn.md §3.7\n9. Upsert sessão\n10. Se concluído → cria `jurema_pacientes` (upsert), `jurema_conversas` (modalidade=texto) ou `jurema_solicitacoes` (modalidade=teleatendimento)\n\n### Antes de ativar\n- Rodar migrations 0001..0003\n- Confirmar credencial Turn.io\n- Verificar que `NUMERO_EQUIPE_IMIP` está preenchido abaixo",
+        "height": 720,
+        "width": 440,
+        "color": 5
+      },
+      "id": "jur-0001-doc",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -560]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jurema-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "jur-0002-webhook",
+      "name": "Webhook Turn.io",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "jurema-inbound-001"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"ok\" }",
+        "options": { "responseCode": 200 }
+      },
+      "id": "jur-0003-resp",
+      "name": "Responder 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 100]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst messages = body.messages || [];\nconst contacts = body.contacts || [];\n\nif (messages.length === 0) {\n  return [{ json: { ignorar: true, motivo: 'sem_messages' } }];\n}\n\nconst msg = messages[0];\nconst wa_id = msg.from || '';\nconst tipo_msg = msg.type || 'text';\nconst contact_name = contacts[0]?.profile?.name || null;\nconst turn_message_id = msg.id || null;\n\nlet texto_original = '';\nlet texto = '';\nlet interactive_id = null;\nlet interactive_title = null;\nlet media = null;\n\nif (tipo_msg === 'text') {\n  texto_original = msg.text?.body || '';\n  texto = texto_original.trim().toLowerCase();\n} else if (tipo_msg === 'interactive') {\n  const inter = msg.interactive || {};\n  if (inter.type === 'list_reply') {\n    interactive_id    = inter.list_reply?.id    || null;\n    interactive_title = inter.list_reply?.title || null;\n  } else if (inter.type === 'button_reply') {\n    interactive_id    = inter.button_reply?.id    || null;\n    interactive_title = inter.button_reply?.title || null;\n  }\n  texto_original = interactive_title || '';\n  texto = interactive_id || '';\n} else if (['image','audio','video','document'].includes(tipo_msg)) {\n  media = msg[tipo_msg] || {};\n  texto_original = media.caption || '';\n  texto = '';\n} else {\n  return [{ json: { ignorar: true, motivo: 'tipo_nao_suportado', tipo_msg } }];\n}\n\nif (!wa_id) return [{ json: { ignorar: true, motivo: 'sem_wa_id' } }];\n\nreturn [{ json: {\n  wa_id, texto, texto_original, tipo_msg, interactive_id, interactive_title,\n  contact_name, turn_message_id, media, ignorar: false,\n  raw_message: msg\n}}];"
+      },
+      "id": "jur-0004-extract",
+      "name": "Extrair Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 360]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "id": "c1",
+            "leftValue": "={{ $json.ignorar }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "notEquals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "jur-0005-if-msg",
+      "name": "Tem mensagem?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 360]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_conversas?select=id,especialidade,especialista_id,status,paciente:jurema_pacientes!inner(wa_id)&paciente.wa_id=eq.{{ $json.wa_id }}&status=eq.em_atendimento&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0006-busca-conv",
+      "name": "Buscar Conversa Ativa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 360]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nconst arr = Array.isArray(resp.body) ? resp.body : [];\nconst ext = $('Extrair Dados').item.json;\nconst conv = arr[0] || null;\nreturn [{ json: { ...ext, conversa_ativa: conv, tem_conversa: !!conv } }];"
+      },
+      "id": "jur-0007-merge",
+      "name": "Merge Contexto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 360]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{
+            "id": "c2",
+            "leftValue": "={{ $json.tem_conversa }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "jur-0008-if-conv",
+      "name": "Conversa em_atendimento?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 360]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_mensagens",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  conversa_id: $json.conversa_ativa.id,\n  wa_id: $json.wa_id,\n  direction: 'inbound',\n  tipo: $json.tipo_msg,\n  content: $json.texto_original || null,\n  turn_message_id: $json.turn_message_id,\n  status: 'received',\n  raw: $json.raw_message\n} }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0009-ins-inbound",
+      "name": "Gravar Inbound (conversa ativa)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 200]
+    },
+
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_conversas?id=eq.{{ $json.conversa_ativa.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  ultima_inbound_at: new Date().toISOString(),\n  ultima_mensagem_at: new Date().toISOString(),\n  janela_expira_at: new Date(Date.now() + 24*3600*1000).toISOString(),\n  reaviso_24h_enviado_at: null\n} }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0010-patch-conv",
+      "name": "Atualizar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 200]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_pacientes?wa_id=eq.{{ $json.wa_id }}&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0011-busca-pac",
+      "name": "Buscar Paciente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_sessoes?wa_id=eq.{{ $('Merge Contexto').item.json.wa_id }}&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0012-busca-sess",
+      "name": "Buscar Sessão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// === Máquina de Estado JUREMA ===\n// Referência: plan file + processTurn.md\n\nconst ctx = $('Merge Contexto').item.json;\nconst pacResp = $('Buscar Paciente').item.json;\nconst sessResp = $('Buscar Sessão').item.json;\n\nconst paciente = (Array.isArray(pacResp.body) ? pacResp.body : [])[0] || null;\nconst sessao = (Array.isArray(sessResp.body) ? sessResp.body : [])[0] || null;\n\nconst wa_id = ctx.wa_id;\nconst texto = (ctx.texto || '').toLowerCase();\nconst texto_original = ctx.texto_original || '';\nconst interactive_id = ctx.interactive_id || null;\nconst interactive_title = ctx.interactive_title || null;\n\n// --- Gatilho de início ---\nconst disparou = texto === 'teleconsultoria';\n\nfunction resp(tipo, mensagem, extra = {}) {\n  return [{ json: { wa_id, ignorar: false, tipo_resposta: tipo, mensagem, ...extra } }];\n}\n\nconst OPCOES_ESPECIALIDADES = [\n  { id: 'medico',            title: 'Médica(o)' },\n  { id: 'psicologo',         title: 'Psicóloga(o)' },\n  { id: 'nutricao',          title: 'Nutricionista' },\n  { id: 'assistente_social', title: 'Assistente Social' }\n];\n\n// Se não tem sessão e não disparou \"teleconsultoria\", ignora\nif (!sessao && !disparou) {\n  return [{ json: { wa_id, ignorar: true, motivo: 'sem_sessao_sem_gatilho' } }];\n}\n\n// Dados de trabalho (buffer da sessão)\nconst dados = {\n  wa_id,\n  step:          sessao?.step          || 'inicio',\n  primeiro_nome: sessao?.primeiro_nome || paciente?.primeiro_nome || null,\n  ultimo_nome:   sessao?.ultimo_nome   || paciente?.ultimo_nome   || null,\n  cpf:           sessao?.cpf           || paciente?.cpf           || null,\n  hospital:      sessao?.hospital      || paciente?.hospital      || null,\n  especialidade: sessao?.especialidade || null,\n  modalidade:    sessao?.modalidade    || null\n};\n\n// --- Gatilho inicial ---\nif (disparou) {\n  if (paciente) {\n    dados.step = 'aguardando_especialidade';\n    return resp('lista', `Olá, *${paciente.primeiro_nome}*! Qual especialidade você precisa?`, {\n      list_rows: OPCOES_ESPECIALIDADES,\n      list_button: 'Escolher',\n      dados_sessao: dados, concluido: false\n    });\n  } else {\n    dados.step = 'aguardando_primeiro_nome';\n    return resp('texto',\n      'Olá! Bem-vindo(a) à Teleconsultoria IMIP 😊\\n\\nPara começar, me informe seu *primeiro nome*.',\n      { dados_sessao: dados, concluido: false }\n    );\n  }\n}\n\n// --- Máquina de estado (sessão ativa) ---\nconst step = dados.step;\n\nif (step === 'aguardando_primeiro_nome') {\n  dados.primeiro_nome = texto_original.trim();\n  dados.step = 'aguardando_ultimo_nome';\n  return resp('texto', 'Agora me informa seu *último nome*.', { dados_sessao: dados, concluido: false });\n}\n\nif (step === 'aguardando_ultimo_nome') {\n  dados.ultimo_nome = texto_original.trim();\n  dados.step = 'aguardando_cpf';\n  return resp('texto', `*${dados.primeiro_nome}*, me informa apenas os números do seu *CPF*.`, { dados_sessao: dados, concluido: false });\n}\n\nif (step === 'aguardando_cpf') {\n  dados.cpf = (texto_original || '').replace(/\\D/g, '');\n  dados.step = 'aguardando_hospital';\n  return resp('texto', `Obrigada *${dados.primeiro_nome}*! Em qual *Hospital* você trabalha?`, { dados_sessao: dados, concluido: false });\n}\n\nif (step === 'aguardando_hospital') {\n  dados.hospital = texto_original.trim();\n  dados.step = 'aguardando_especialidade';\n  return resp('lista', 'Qual especialidade você precisa?', {\n    list_rows: OPCOES_ESPECIALIDADES,\n    list_button: 'Escolher',\n    dados_sessao: dados, concluido: false\n  });\n}\n\nif (step === 'aguardando_especialidade') {\n  const esp = interactive_id || '';\n  const validos = OPCOES_ESPECIALIDADES.map(o => o.id);\n  if (!validos.includes(esp)) {\n    return resp('lista', 'Por favor, escolha uma das opções abaixo.', {\n      list_rows: OPCOES_ESPECIALIDADES, list_button: 'Escolher',\n      dados_sessao: dados, concluido: false\n    });\n  }\n  dados.especialidade = esp;\n  dados.step = 'aguardando_modalidade';\n  return resp('botoes', 'Como você prefere o atendimento?', {\n    buttons: [\n      { id: 'teleatendimento', title: 'Teleatendimento' },\n      { id: 'texto',           title: 'Enviar texto' }\n    ],\n    dados_sessao: dados, concluido: false\n  });\n}\n\nif (step === 'aguardando_modalidade') {\n  const mod = interactive_id || '';\n  if (!['teleatendimento','texto'].includes(mod)) {\n    return resp('botoes', 'Por favor, escolha uma das opções.', {\n      buttons: [\n        { id: 'teleatendimento', title: 'Teleatendimento' },\n        { id: 'texto',           title: 'Enviar texto' }\n      ],\n      dados_sessao: dados, concluido: false\n    });\n  }\n  dados.modalidade = mod;\n  dados.step = 'concluido';\n\n  const mensagem_final = mod === 'teleatendimento'\n    ? 'Perfeito! Uma atendente entrará em contato para confirmar o *link, data e horário* da videochamada. 🎥'\n    : 'Perfeito! Envie agora sua *dúvida* em uma mensagem. Um(a) profissional responderá em até 72h. 🕐';\n\n  const esp_label = (OPCOES_ESPECIALIDADES.find(o => o.id === dados.especialidade) || {}).title || dados.especialidade;\n\n  return resp('texto', mensagem_final, {\n    dados_sessao: dados,\n    concluido: true,\n    paciente_upsert: {\n      wa_id,\n      primeiro_nome: dados.primeiro_nome,\n      ultimo_nome:   dados.ultimo_nome,\n      cpf:           dados.cpf,\n      hospital:      dados.hospital\n    },\n    criar_conversa: mod === 'texto',\n    criar_solicitacao: true,\n    msg_equipe: `🔔 *Nova solicitação JUREMA*\\n\\n👤 ${dados.primeiro_nome} ${dados.ultimo_nome}\\n📱 ${wa_id}\\n🪪 ${dados.cpf}\\n🏥 ${dados.hospital}\\n🩺 ${esp_label}\\n📞 ${mod === 'teleatendimento' ? 'Teleatendimento (videochamada)' : 'Texto (72h)'}`\n  });\n}\n\nreturn [{ json: { wa_id, ignorar: true, motivo: 'step_desconhecido', step } }];"
+      },
+      "id": "jur-0013-state",
+      "name": "Processar Estado JUREMA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 500]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{
+            "id": "c3",
+            "leftValue": "={{ $json.ignorar }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "notEquals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "jur-0014-if-act",
+      "name": "Tem ação?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2220, 500]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nconst base = { recipient_type: 'individual', to: d.wa_id };\n\nlet payload;\nif (d.tipo_resposta === 'botoes') {\n  payload = {\n    ...base,\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: { text: d.mensagem },\n      action: { buttons: (d.buttons || []).slice(0, 3).map(b => ({ type: 'reply', reply: { id: b.id, title: b.title } })) }\n    }\n  };\n} else if (d.tipo_resposta === 'lista') {\n  payload = {\n    ...base,\n    type: 'interactive',\n    interactive: {\n      type: 'list',\n      body: { text: d.mensagem },\n      action: {\n        button: d.list_button || 'Ver opções',\n        sections: [{ title: 'Opções', rows: d.list_rows || [] }]\n      }\n    }\n  };\n} else {\n  payload = { ...base, type: 'text', text: { body: d.mensagem } };\n}\n\nreturn [{ json: { ...d, turn_payload: payload } }];"
+      },
+      "id": "jur-0015-payload",
+      "name": "Montar Payload Turn.io",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_TURN_BEARER_TOKEN" },
+            { "name": "Accept",        "value": "application/vnd.v1+json" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.turn_payload }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0016-send",
+      "name": "Enviar Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 500]
+    },
+
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "a1", "name": "wa_id",             "value": "={{ $('Montar Payload Turn.io').item.json.wa_id }}",             "type": "string" },
+            { "id": "a2", "name": "dados_sessao",      "value": "={{ $('Montar Payload Turn.io').item.json.dados_sessao }}",      "type": "object" },
+            { "id": "a3", "name": "concluido",         "value": "={{ $('Montar Payload Turn.io').item.json.concluido || false }}", "type": "boolean" },
+            { "id": "a4", "name": "paciente_upsert",   "value": "={{ $('Montar Payload Turn.io').item.json.paciente_upsert || null }}",   "type": "object" },
+            { "id": "a5", "name": "criar_conversa",    "value": "={{ $('Montar Payload Turn.io').item.json.criar_conversa || false }}", "type": "boolean" },
+            { "id": "a6", "name": "criar_solicitacao", "value": "={{ $('Montar Payload Turn.io').item.json.criar_solicitacao || false }}", "type": "boolean" },
+            { "id": "a7", "name": "msg_equipe",        "value": "={{ $('Montar Payload Turn.io').item.json.msg_equipe || '' }}",        "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "jur-0017-preserve",
+      "name": "Preservar Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2880, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_sessoes?on_conflict=wa_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.dados_sessao }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0018-upsert-sess",
+      "name": "Upsert Sessão",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 500]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{
+            "id": "c4",
+            "leftValue": "={{ $json.concluido }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "jur-0019-if-done",
+      "name": "Concluído?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3320, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_pacientes?on_conflict=wa_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.paciente_upsert }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0020-upsert-pac",
+      "name": "Upsert Paciente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3540, 400]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const pacResp = $input.first().json;\nconst paciente = (Array.isArray(pacResp.body) ? pacResp.body : [])[0] || null;\nconst preserved = $('Preservar Dados').item.json;\nreturn [{ json: { ...preserved, paciente_id: paciente?.id, paciente } }];"
+      },
+      "id": "jur-0021-pac-id",
+      "name": "Resolver Paciente ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3760, 400]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "typeValidation": "strict" },
+          "conditions": [{
+            "id": "c5",
+            "leftValue": "={{ $json.criar_conversa }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "equals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "jur-0022-if-conv-new",
+      "name": "Criar conversa?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3980, 400]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_conversas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  paciente_id: $json.paciente_id,\n  especialidade: $json.dados_sessao.especialidade,\n  status: 'fila',\n  ultima_inbound_at: new Date().toISOString(),\n  ultima_mensagem_at: new Date().toISOString(),\n  janela_expira_at: new Date(Date.now() + 24*3600*1000).toISOString()\n} }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0023-ins-conv",
+      "name": "Inserir Conversa (fila)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4200, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_solicitacoes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  paciente_id: $json.paciente_id,\n  especialidade: $json.dados_sessao.especialidade,\n  modalidade: $json.dados_sessao.modalidade,\n  status: 'pendente'\n} }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "jur-0024-ins-sol",
+      "name": "Inserir Solicitação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4200, 500]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_TURN_BEARER_TOKEN" },
+            { "name": "Accept",        "value": "application/vnd.v1+json" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { recipient_type: 'individual', to: 'NUMERO_EQUIPE_IMIP', type: 'text', text: { body: $json.msg_equipe } } }}",
+        "options": { "response": { "response": { "neverError": true, "fullResponse": true } } }
+      },
+      "id": "jur-0025-notify",
+      "name": "Notificar Equipe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4420, 400]
+    }
+  ],
+
+  "connections": {
+    "Webhook Turn.io": {
+      "main": [[
+        { "node": "Responder 200 OK", "type": "main", "index": 0 },
+        { "node": "Extrair Dados",    "type": "main", "index": 0 }
+      ]]
+    },
+    "Extrair Dados":      { "main": [[{ "node": "Tem mensagem?",        "type": "main", "index": 0 }]] },
+    "Tem mensagem?":      { "main": [[{ "node": "Buscar Conversa Ativa","type": "main", "index": 0 }]] },
+    "Buscar Conversa Ativa": { "main": [[{ "node": "Merge Contexto",    "type": "main", "index": 0 }]] },
+    "Merge Contexto":     { "main": [[{ "node": "Conversa em_atendimento?", "type": "main", "index": 0 }]] },
+    "Conversa em_atendimento?": {
+      "main": [
+        [{ "node": "Gravar Inbound (conversa ativa)", "type": "main", "index": 0 }],
+        [{ "node": "Buscar Paciente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gravar Inbound (conversa ativa)": { "main": [[{ "node": "Atualizar Conversa", "type": "main", "index": 0 }]] },
+    "Buscar Paciente":    { "main": [[{ "node": "Buscar Sessão",        "type": "main", "index": 0 }]] },
+    "Buscar Sessão":      { "main": [[{ "node": "Processar Estado JUREMA", "type": "main", "index": 0 }]] },
+    "Processar Estado JUREMA": { "main": [[{ "node": "Tem ação?", "type": "main", "index": 0 }]] },
+    "Tem ação?":          { "main": [[{ "node": "Montar Payload Turn.io", "type": "main", "index": 0 }]] },
+    "Montar Payload Turn.io": { "main": [[{ "node": "Enviar Turn.io", "type": "main", "index": 0 }]] },
+    "Enviar Turn.io":     { "main": [[{ "node": "Preservar Dados", "type": "main", "index": 0 }]] },
+    "Preservar Dados":    { "main": [[{ "node": "Upsert Sessão",  "type": "main", "index": 0 }]] },
+    "Upsert Sessão":      { "main": [[{ "node": "Concluído?",     "type": "main", "index": 0 }]] },
+    "Concluído?":         { "main": [[{ "node": "Upsert Paciente","type": "main", "index": 0 }]] },
+    "Upsert Paciente":    { "main": [[{ "node": "Resolver Paciente ID", "type": "main", "index": 0 }]] },
+    "Resolver Paciente ID": { "main": [[{ "node": "Criar conversa?", "type": "main", "index": 0 }]] },
+    "Criar conversa?": {
+      "main": [
+        [{ "node": "Inserir Conversa (fila)", "type": "main", "index": 0 }, { "node": "Inserir Solicitação", "type": "main", "index": 0 }],
+        [{ "node": "Inserir Solicitação", "type": "main", "index": 0 }]
+      ]
+    },
+    "Inserir Conversa (fila)": { "main": [[{ "node": "Notificar Equipe", "type": "main", "index": 0 }]] },
+    "Inserir Solicitação":     { "main": [[{ "node": "Notificar Equipe", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "version": 1
+}

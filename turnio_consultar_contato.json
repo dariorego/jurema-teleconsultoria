@@ -1,0 +1,235 @@
+{
+  "name": "Turn.io - Consultar Contato",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turn-consultar-contato",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "turn-io-consultar-contato-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-wa-id",
+              "leftValue": "={{ $json.body.wa_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Tem wa_id?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://whatsapp.turn.io/v1/contacts/{{ $json.body.wa_id }}/profile",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.v1+json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Consultar Contato Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 180],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SEU_CREDENTIAL_ID",
+          "name": "Turn.io API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-status-ok",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "API retornou sucesso?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, wa_id: $('Webhook').item.json.body.wa_id, contato: $json.body }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Responder: Contato Encontrado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, wa_id: $('Webhook').item.json.body.wa_id, error: 'Erro ao consultar contato na Turn.io', statusCode: $json.statusCode, detalhes: $json.body }) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Responder: Erro API Turn.io",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": false, \"error\": \"O campo wa_id é obrigatório. Informe o número de telefone no formato internacional, sem o '+' (ex: 5511999999999)\" }",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "Responder: wa_id ausente",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 440]
+    },
+    {
+      "parameters": {
+        "content": "## 📋 Turn.io – Consultar Contato\n\n**Como usar:**\nEnvie um `POST` para a URL do webhook com o body:\n```json\n{ \"wa_id\": \"5511999999999\" }\n```\n\n**Credencial necessária:**\nCrie uma credencial do tipo **Header Auth** no N8N:\n- **Name**: `Authorization`\n- **Value**: `Bearer SEU_TOKEN_AQUI`\n\nSubstitua `SEU_CREDENTIAL_ID` pelo ID gerado.\n\n**Endpoint Turn.io utilizado:**\n`GET /v1/contacts/{wa_id}/profile`\n\n**Campos padrão retornados:**\n- `name`, `surname`, `language`\n- `opted_in`, `opted_in_at`\n- `birthday`, `location`\n- `whatsapp_profile_name`, `whatsapp_id`\n- `first_message_received_at`, `last_message_received_at`\n- `last_message_sent_at`, `last_seen_at`\n- `is_blocked`\n\n⚠️ Se o contato não existir na Turn.io, ele será **criado automaticamente**.",
+        "height": 500,
+        "width": 380,
+        "color": 5
+      },
+      "id": "a1b2c3d4-0008-0008-0008-000000000008",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -260]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Tem wa_id?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem wa_id?": {
+      "main": [
+        [
+          {
+            "node": "Consultar Contato Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: wa_id ausente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Contato Turn.io": {
+      "main": [
+        [
+          {
+            "node": "API retornou sucesso?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API retornou sucesso?": {
+      "main": [
+        [
+          {
+            "node": "Responder: Contato Encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: Erro API Turn.io",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "turn-io-consultar-contato"
+}

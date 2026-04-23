@@ -1,0 +1,392 @@
+{
+  "name": "Turn.io - Teleconsultoria IMIP",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🩺 Teleconsultoria IMIP\n\n**Webhook Turn.io:**\n`https://n8n.projetosimip.online/webhook/turn-teleconsultoria`\n\n---\n\n### Sequência da conversa:\n1. Paciente envia `teleconsultoria`\n2. \"Me informa seu **primeiro nome**\"\n3. \"Me informa seu **último nome**\"\n4. \"[nome], Me informa apenas os números do seu **CPF**\"\n5. \"Muito obrigado [nome], em qual **Hospital** você trabalha?\"\n6. Botões → **Qual forma de atendimento?**\n   - Agendar videochamada\n   - Mensagens de texto\n7. Lista → **Escolha a especialidade**\n   - Médica(o) / Psicologa(o)\n   - Nutricionista / Assistente Social\n8. \"Mande uma mensagem única... aguarde 72h\"\n9. Salva no Supabase + notifica equipe\n\n---\n\n### ⚠️ Antes de ativar:\n1. Rodar `teleconsultoria_update.sql` no Supabase\n2. Substituir `NUMERO_EQUIPE_IMIP` no nó\n   **Notificar Equipe** pelo número real\n3. Confirmar credencial **Turn.io API Token**\n\n---\n\n### ℹ️ Sobre o branch False em \"Tem mensagem?\":\nÉ comportamento esperado. Turn.io dispara este webhook\ntambém para confirmações de entrega (sent/delivered/read)\ndas mensagens que enviamos. Essas não têm messages[]\ne vão corretamente para o False — pode ignorar.",
+        "height": 760,
+        "width": 440,
+        "color": 5
+      },
+      "id": "f1a2b3c4-0001-0001-0001-000000000001",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -560]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "turn-teleconsultoria",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f1a2b3c4-0002-0002-0002-000000000002",
+      "name": "Webhook Turn.io",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "turn-io-teleconsultoria-001"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"status\": \"ok\" }",
+        "options": { "responseCode": 200 }
+      },
+      "id": "f1a2b3c4-0003-0003-0003-000000000003",
+      "name": "Responder 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst messages = body.messages || [];\n\nif (messages.length === 0) {\n  return [{ json: { ignorar: true, motivo: 'sem_messages' } }];\n}\n\nconst msg = messages[0];\nconst wa_id = msg.from || '';\nconst tipo_msg = msg.type || 'text';\n\nlet texto_original = '';\nlet texto = '';\nlet interactive_id = null;\nlet interactive_title = null;\n\nif (tipo_msg === 'text') {\n  texto_original = msg.text?.body || '';\n  texto = texto_original.trim().toLowerCase();\n} else if (tipo_msg === 'interactive') {\n  const inter = msg.interactive || {};\n  if (inter.type === 'list_reply') {\n    interactive_id    = inter.list_reply?.id    || null;\n    interactive_title = inter.list_reply?.title || null;\n  } else if (inter.type === 'button_reply') {\n    interactive_id    = inter.button_reply?.id    || null;\n    interactive_title = inter.button_reply?.title || null;\n  }\n  texto_original = interactive_title || '';\n  texto = interactive_id || '';\n} else {\n  return [{ json: { ignorar: true, motivo: 'tipo_nao_suportado', tipo_msg } }];\n}\n\nif (!wa_id) {\n  return [{ json: { ignorar: true, motivo: 'sem_wa_id' } }];\n}\n\nreturn [{ json: { wa_id, texto, texto_original, tipo_msg, interactive_id, interactive_title, ignorar: false } }];"
+      },
+      "id": "f1a2b3c4-0004-0004-0004-000000000004",
+      "name": "Extrair Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-tem-msg",
+              "leftValue": "={{ $json.ignorar }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1a2b3c4-0005-0005-0005-000000000005",
+      "name": "Tem mensagem?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 360]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/teleconsultoria_sessoes?wa_id=eq.{{ $json.wa_id }}&step=neq.concluido&select=*&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" }
+          ]
+        },
+        "options": {
+          "response": { "response": { "neverError": true, "fullResponse": true } }
+        }
+      },
+      "id": "f1a2b3c4-0006-0006-0006-000000000006",
+      "name": "Buscar Sessão Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sessão ativa do Supabase\nconst httpResp = $input.first().json;\nconst sessions = Array.isArray(httpResp.body) ? httpResp.body : [];\nconst session = sessions[0] || null;\n\n// Dados extraídos da mensagem\nconst ext = $('Extrair Dados').item.json;\nconst wa_id = ext.wa_id;\nconst texto = ext.texto || '';\nconst texto_original = ext.texto_original || '';\nconst interactive_title = ext.interactive_title || null;\n\n// ── INÍCIO: paciente enviou \"teleconsultoria\" sem sessão ativa ─\nif (!session && texto === 'teleconsultoria') {\n  return [{ json: {\n    wa_id,\n    ignorar: false,\n    tipo_resposta: 'texto',\n    mensagem: 'Olá, tudo bem? Bem vindo ao serviço de Teleconsultoria IMIP. 😊\\n\\nMe informa seu *primeiro nome*',\n    dados_sessao: { wa_id, step: 'aguardando_nome' },\n    concluido: false\n  }}];\n}\n\n// ── SESSÃO ATIVA ───────────────────────────────────────────────\nif (session) {\n  const step = session.step;\n  const dados = {\n    wa_id:             session.wa_id,\n    step:              session.step,\n    nome:              session.nome,\n    sobrenome:         session.sobrenome,\n    cpf:               session.cpf,\n    hospital:          session.hospital,\n    forma_atendimento: session.forma_atendimento,\n    tipo_atendimento:  session.tipo_atendimento\n  };\n\n  // 1. Nome\n  if (step === 'aguardando_nome') {\n    dados.nome = texto_original || texto;\n    dados.step = 'aguardando_sobrenome';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'texto',\n      mensagem: 'Me informa seu *último nome*',\n      dados_sessao: dados, concluido: false\n    }}];\n  }\n\n  // 2. Sobrenome\n  if (step === 'aguardando_sobrenome') {\n    dados.sobrenome = texto_original || texto;\n    dados.step = 'aguardando_cpf';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'texto',\n      mensagem: `*${dados.nome}*, me informa apenas os números do seu CPF`,\n      dados_sessao: dados, concluido: false\n    }}];\n  }\n\n  // 3. CPF\n  if (step === 'aguardando_cpf') {\n    dados.cpf = texto_original || texto;\n    dados.step = 'aguardando_hospital';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'texto',\n      mensagem: `Muito obrigado *${dados.nome}*, me confirma por favor em qual Hospital você trabalha.`,\n      dados_sessao: dados, concluido: false\n    }}];\n  }\n\n  // 4. Hospital\n  if (step === 'aguardando_hospital') {\n    dados.hospital = texto_original || texto;\n    dados.step = 'aguardando_forma';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'botoes',\n      mensagem: 'Qual forma de atendimento você prefere?',\n      dados_sessao: dados, concluido: false\n    }}];\n  }\n\n  // 5. Forma de atendimento (botões)\n  if (step === 'aguardando_forma') {\n    const forma = interactive_title || texto_original || texto;\n    dados.forma_atendimento = forma;\n    dados.step = 'aguardando_tipo';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'lista',\n      mensagem: 'Escolha a especialidade',\n      dados_sessao: dados, concluido: false\n    }}];\n  }\n\n  // 6. Tipo / Especialidade (lista)\n  if (step === 'aguardando_tipo') {\n    const tipo = interactive_title || texto_original || texto;\n    dados.tipo_atendimento = tipo;\n    dados.step = 'concluido';\n    return [{ json: {\n      wa_id, ignorar: false, tipo_resposta: 'texto',\n      mensagem: 'Mande uma mensagem única com uma descrição do que você quer discutir e aguarde que a(o) especialista irá te responder em até 72h. 🕐',\n      dados_sessao: dados,\n      concluido: true,\n      solicitacao: {\n        wa_id,\n        nome:              dados.nome,\n        sobrenome:         dados.sobrenome,\n        cpf:               dados.cpf,\n        hospital:          dados.hospital,\n        forma_atendimento: dados.forma_atendimento,\n        tipo_atendimento:  tipo,\n        status: 'pendente'\n      },\n      msg_equipe: `🔔 *Nova Solicitação de Teleconsultoria*\\n\\n👤 ${dados.nome} ${dados.sobrenome}\\n📱 WhatsApp: ${wa_id}\\n🪪 CPF: ${dados.cpf}\\n🏥 Hospital: ${dados.hospital}\\n📞 Forma: ${dados.forma_atendimento}\\n🩺 Especialidade: ${tipo}\\n\\n📌 Status: Pendente`\n    }}];\n  }\n}\n\n// Nenhuma ação necessária\nreturn [{ json: { ignorar: true, wa_id } }];"
+      },
+      "id": "f1a2b3c4-0007-0007-0007-000000000007",
+      "name": "Processar Estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-tem-acao",
+              "leftValue": "={{ $json.tipo_resposta }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1a2b3c4-0008-0008-0008-000000000008",
+      "name": "Tem ação?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const dados = $input.first().json;\nconst wa_id = dados.wa_id;\nconst tipo = dados.tipo_resposta;\n\nlet payload;\n\nif (tipo === 'botoes') {\n  payload = {\n    recipient_type: 'individual',\n    to: wa_id,\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: { text: dados.mensagem },\n      action: {\n        buttons: [\n          { type: 'reply', reply: { id: 'videochamada',    title: 'Agendar videochamada' } },\n          { type: 'reply', reply: { id: 'mensagens_texto', title: 'Mensagens de texto'   } }\n        ]\n      }\n    }\n  };\n} else if (tipo === 'lista') {\n  payload = {\n    recipient_type: 'individual',\n    to: wa_id,\n    type: 'interactive',\n    interactive: {\n      type: 'list',\n      body: { text: dados.mensagem },\n      action: {\n        button: 'Ver especialidades',\n        sections: [{\n          title: 'Especialidades',\n          rows: [\n            { id: 'medico',            title: 'Médica(o)'         },\n            { id: 'psicologo',         title: 'Psicologa(o)'      },\n            { id: 'nutricionista',     title: 'Nutricionista'     },\n            { id: 'assistente_social', title: 'Assistente Social' }\n          ]\n        }]\n      }\n    }\n  };\n} else {\n  payload = {\n    recipient_type: 'individual',\n    to: wa_id,\n    type: 'text',\n    text: { body: dados.mensagem }\n  };\n}\n\nreturn [{ json: { ...dados, payload } }];"
+      },
+      "id": "f1a2b3c4-0009-0009-0009-000000000009",
+      "name": "Montar Payload Turn.io",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept",       "value": "application/vnd.v1+json" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": { "response": { "neverError": true, "fullResponse": true } }
+        }
+      },
+      "id": "f1a2b3c4-0010-0010-0010-000000000010",
+      "name": "Enviar Mensagem Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SEU_CREDENTIAL_ID",
+          "name": "Turn.io API Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "pres-dados-sessao",
+              "name": "dados_sessao",
+              "value": "={{ $('Montar Payload Turn.io').item.json.dados_sessao }}",
+              "type": "object"
+            },
+            {
+              "id": "pres-concluido",
+              "name": "concluido",
+              "value": "={{ $('Montar Payload Turn.io').item.json.concluido }}",
+              "type": "boolean"
+            },
+            {
+              "id": "pres-solicitacao",
+              "name": "solicitacao",
+              "value": "={{ $('Montar Payload Turn.io').item.json.solicitacao }}",
+              "type": "object"
+            },
+            {
+              "id": "pres-msg-equipe",
+              "name": "msg_equipe",
+              "value": "={{ $('Montar Payload Turn.io').item.json.msg_equipe }}",
+              "type": "string"
+            },
+            {
+              "id": "pres-wa-id",
+              "name": "wa_id",
+              "value": "={{ $('Montar Payload Turn.io').item.json.wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f1a2b3c4-0015-0015-0015-000000000015",
+      "name": "Preservar Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2000, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/teleconsultoria_sessoes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.dados_sessao) }}",
+        "options": {
+          "response": { "response": { "fullResponse": true } }
+        }
+      },
+      "id": "f1a2b3c4-0011-0011-0011-000000000011",
+      "name": "Atualizar Sessão Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 120]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-concluido",
+              "leftValue": "={{ $('Preservar Dados').item.json.concluido }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1a2b3c4-0012-0012-0012-000000000012",
+      "name": "Concluído?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2440, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/solicitacoes_teleconsultoria",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Preservar Dados').item.json.solicitacao) }}",
+        "options": {
+          "response": { "response": { "neverError": true, "fullResponse": true } }
+        }
+      },
+      "id": "f1a2b3c4-0013-0013-0013-000000000013",
+      "name": "Salvar Solicitação Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept",       "value": "application/vnd.v1+json" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ recipient_type: 'individual', to: 'NUMERO_EQUIPE_IMIP', type: 'text', text: { body: $('Preservar Dados').item.json.msg_equipe || '' } }) }}",
+        "options": {
+          "response": { "response": { "neverError": true, "fullResponse": true } }
+        }
+      },
+      "id": "f1a2b3c4-0014-0014-0014-000000000014",
+      "name": "Notificar Equipe Turn.io",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SEU_CREDENTIAL_ID",
+          "name": "Turn.io API Token"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Turn.io": {
+      "main": [
+        [
+          { "node": "Responder 200 OK", "type": "main", "index": 0 },
+          { "node": "Extrair Dados",    "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extrair Dados": {
+      "main": [
+        [{ "node": "Tem mensagem?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Tem mensagem?": {
+      "main": [
+        [{ "node": "Buscar Sessão Supabase", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Buscar Sessão Supabase": {
+      "main": [
+        [{ "node": "Processar Estado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Processar Estado": {
+      "main": [
+        [{ "node": "Tem ação?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Tem ação?": {
+      "main": [
+        [{ "node": "Montar Payload Turn.io", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Montar Payload Turn.io": {
+      "main": [
+        [{ "node": "Enviar Mensagem Turn.io", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enviar Mensagem Turn.io": {
+      "main": [
+        [{ "node": "Preservar Dados", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preservar Dados": {
+      "main": [
+        [{ "node": "Atualizar Sessão Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Atualizar Sessão Supabase": {
+      "main": [
+        [{ "node": "Concluído?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Concluído?": {
+      "main": [
+        [{ "node": "Salvar Solicitação Supabase", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Salvar Solicitação Supabase": {
+      "main": [
+        [{ "node": "Notificar Equipe Turn.io", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "3",
+  "id": "turn-io-teleconsultoria-imip"
+}

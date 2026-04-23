@@ -1,0 +1,130 @@
+{
+  "name": "JUREMA - Janela 24h (cron reaviso)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⏰ JUREMA — Janela 24h\n\nRoda de hora em hora. Para cada conversa `em_atendimento` cuja última mensagem inbound está entre 22h e 23h atrás, envia um **template** Turn.io perguntando se o paciente ainda tem interesse. Marca `reaviso_24h_enviado_at` para não repetir.\n\n### Template Turn.io\nUse um template aprovado com corpo:\n\n> Olá {{1}}, ainda tem interesse no atendimento com o(a) especialista? Responda *sim* para continuarmos.\n\nAjuste `name` e `namespace` no nó **Enviar Template Reaviso**.\n\n### Resposta do paciente\nQuando o paciente responde inbound, o workflow `jurema-inbound` já atualiza `ultima_inbound_at` e zera `reaviso_24h_enviado_at`, reabrindo a janela.",
+        "height": 400,
+        "width": 420,
+        "color": 5
+      },
+      "id": "j24-0001-doc",
+      "name": "Documentação",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [200, -200]
+    },
+
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] }
+      },
+      "id": "j24-0002-cron",
+      "name": "A cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const agora = Date.now();\nconst inicio = new Date(agora - 23 * 3600 * 1000).toISOString();\nconst fim    = new Date(agora - 22 * 3600 * 1000).toISOString();\nreturn [{ json: { inicio, fim } }];"
+      },
+      "id": "j24-0003-bounds",
+      "name": "Calcular janela",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_conversas?status=eq.em_atendimento&reaviso_24h_enviado_at=is.null&ultima_inbound_at=gte.{{ $json.inicio }}&ultima_inbound_at=lte.{{ $json.fim }}&select=id,paciente:jurema_pacientes(wa_id,primeiro_nome)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "j24-0004-busca",
+      "name": "Buscar conversas 22-23h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || [];\nreturn body.map(c => ({ json: {\n  conversa_id: c.id,\n  wa_id: c.paciente?.wa_id,\n  primeiro_nome: c.paciente?.primeiro_nome || ''\n}})).filter(x => x.json.wa_id);"
+      },
+      "id": "j24-0005-split",
+      "name": "Split conversas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://whatsapp.turn.io/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_TURN_BEARER_TOKEN" },
+            { "name": "Accept",        "value": "application/vnd.v1+json" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  recipient_type: 'individual',\n  to: $json.wa_id,\n  type: 'template',\n  template: {\n    namespace: 'SUBSTITUIR_NAMESPACE',\n    name: 'jurema_reaviso_24h',\n    language: { policy: 'deterministic', code: 'pt_BR' },\n    components: [ { type: 'body', parameters: [ { type: 'text', text: $json.primeiro_nome || 'paciente' } ] } ]\n  }\n} }}",
+        "options": { "response": { "response": { "neverError": true, "fullResponse": true } } }
+      },
+      "id": "j24-0006-send",
+      "name": "Enviar Template Reaviso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://uwwcrulhfrleqlmgmbcm.supabase.co/rest/v1/jurema_conversas?id=eq.{{ $('Split conversas').item.json.conversa_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",        "value": "REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Authorization", "value": "Bearer REPLACE_WITH_SUPABASE_ANON_KEY" },
+            { "name": "Prefer",        "value": "return=minimal" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { reaviso_24h_enviado_at: new Date().toISOString() } }}",
+        "options": { "response": { "response": { "neverError": false, "fullResponse": true } } }
+      },
+      "id": "j24-0007-mark",
+      "name": "Marcar reaviso enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "A cada hora":             { "main": [[{ "node": "Calcular janela", "type": "main", "index": 0 }]] },
+    "Calcular janela":         { "main": [[{ "node": "Buscar conversas 22-23h", "type": "main", "index": 0 }]] },
+    "Buscar conversas 22-23h": { "main": [[{ "node": "Split conversas", "type": "main", "index": 0 }]] },
+    "Split conversas":         { "main": [[{ "node": "Enviar Template Reaviso", "type": "main", "index": 0 }]] },
+    "Enviar Template Reaviso": { "main": [[{ "node": "Marcar reaviso enviado", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "version": 1
+}
