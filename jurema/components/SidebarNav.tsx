@@ -8,8 +8,8 @@ import type { ComponentType } from "react";
 type Item = { href: string; label: string; icon: ComponentType<{ size?: number }> };
 
 const items: Item[] = [
-  { href: "/caixa", label: "Caixa", icon: Inbox },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/caixa", label: "Caixa", icon: Inbox },
 ];
 
 export function SidebarNav() {

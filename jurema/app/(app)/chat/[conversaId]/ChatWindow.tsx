@@ -7,7 +7,8 @@ import type { Mensagem } from "@/lib/types";
 
 type Conversa = {
   id: string;
-  status: "fila" | "em_atendimento" | "encerrada";
+  status: "fila" | "em_atendimento" | "aguardando_avaliacao" | "encerrada";
+  avaliacao: number | null;
   especialidade: string;
   especialista_id: string | null;
   janela_expira_at: string | null;
@@ -118,10 +119,18 @@ export function ChatWindow({
   }
 
   async function encerrar() {
-    if (!confirm("Encerrar esta conversa?")) return;
+    if (
+      !confirm(
+        "Encerrar esta conversa?\n\nO paciente receberá uma pesquisa de satisfação (1 a 5) via WhatsApp. A conversa só será totalmente encerrada quando ele responder.",
+      )
+    )
+      return;
     const res = await fetch(`/api/conversas/${conversa.id}/encerrar`, { method: "POST" });
     if (res.ok) router.push("/caixa");
-    else alert("Erro ao encerrar");
+    else {
+      const j = await res.json().catch(() => ({}));
+      alert(`Erro ao encerrar: ${j.error ?? res.statusText}${j.detail ? ` — ${j.detail}` : ""}`);
+    }
   }
 
   const nome = conversa.paciente
@@ -146,7 +155,17 @@ export function ChatWindow({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {janelaPorHoras != null && (
+          {conversa.status === "aguardando_avaliacao" && (
+            <span className="text-xs px-2 py-0.5 rounded bg-whatsapp-panel2 border border-whatsapp-border text-whatsapp-muted">
+              Aguardando avaliação…
+            </span>
+          )}
+          {conversa.status === "encerrada" && conversa.avaliacao != null && (
+            <span className="text-xs px-2 py-0.5 rounded border border-whatsapp-accent text-whatsapp-accent">
+              Avaliação: {conversa.avaliacao}/5
+            </span>
+          )}
+          {janelaPorHoras != null && conversa.status === "em_atendimento" && (
             <span
               className={`text-xs ${
                 janelaPorHoras < 2 ? "text-yellow-400" : "text-whatsapp-muted"
@@ -199,11 +218,13 @@ export function ChatWindow({
           placeholder={
             conversa.status === "encerrada"
               ? "Conversa encerrada"
-              : minha
-                ? uploading
-                  ? "Enviando arquivo…"
-                  : "Digite uma mensagem"
-                : "Puxe a conversa para responder"
+              : conversa.status === "aguardando_avaliacao"
+                ? "Aguardando avaliação do paciente…"
+                : minha
+                  ? uploading
+                    ? "Enviando arquivo…"
+                    : "Digite uma mensagem"
+                  : "Puxe a conversa para responder"
           }
           disabled={!minha || conversa.status !== "em_atendimento" || enviando || uploading}
           className="flex-1 px-4 py-2 rounded-lg bg-whatsapp-panel2 border border-whatsapp-border text-whatsapp-text focus:outline-none focus:border-whatsapp-accent disabled:opacity-50"

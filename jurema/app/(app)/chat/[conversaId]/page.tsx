@@ -15,13 +15,17 @@ export default async function ChatPage({
   const { data: conversa } = await supabase
     .from("jurema_conversas")
     .select(`
-      id, status, especialidade, especialista_id, janela_expira_at,
+      id, status, especialidade, especialista_id, janela_expira_at, avaliacao,
       paciente:jurema_pacientes(id, wa_id, primeiro_nome, ultimo_nome, cpf, hospital)
     `)
     .eq("id", conversaId)
     .maybeSingle();
 
   if (!conversa) notFound();
+
+  const pacienteRaw = (conversa as { paciente?: unknown }).paciente;
+  const pacienteNorm = Array.isArray(pacienteRaw) ? pacienteRaw[0] ?? null : pacienteRaw ?? null;
+  const conversaNorm = { ...conversa, paciente: pacienteNorm };
 
   const { data: mensagens } = await supabase
     .from("jurema_mensagens")
@@ -33,7 +37,7 @@ export default async function ChatPage({
 
   return (
     <ChatWindow
-      conversa={conversa as any}
+      conversa={conversaNorm as never}
       initialMensagens={mensagens ?? []}
       userId={user!.id}
     />

@@ -7,7 +7,7 @@ import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Row = {
   id: string;
-  status: "fila" | "em_atendimento" | "encerrada";
+  status: "fila" | "em_atendimento" | "aguardando_avaliacao" | "encerrada";
   especialidade: string;
   especialista_id: string | null;
   ultima_mensagem_at: string | null;

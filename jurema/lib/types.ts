@@ -1,5 +1,5 @@
 export type Especialidade = "medico" | "psicologo" | "nutricao" | "assistente_social";
-export type StatusConversa = "fila" | "em_atendimento" | "encerrada";
+export type StatusConversa = "fila" | "em_atendimento" | "aguardando_avaliacao" | "encerrada";
 export type Direction = "inbound" | "outbound";
 export type TipoMensagem = "text" | "image" | "audio" | "video" | "document" | "interactive" | "template" | "system";
 export type Role = "especialista" | "admin";
@@ -23,6 +23,7 @@ export type Conversa = {
   ultima_inbound_at: string | null;
   janela_expira_at: string | null;
   created_at: string;
+  avaliacao: number | null;
 };
 
 export type Mensagem = {
