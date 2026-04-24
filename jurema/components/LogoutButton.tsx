@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 export function LogoutButton() {
@@ -12,10 +13,12 @@ export function LogoutButton() {
   }
   return (
     <button
+      type="button"
       onClick={logout}
-      className="w-full text-left px-3 py-2 rounded hover:bg-whatsapp-panel2 text-whatsapp-muted text-sm"
+      className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-whatsapp-panel2 text-whatsapp-muted hover:text-whatsapp-text text-sm"
     >
-      Sair
+      <LogOut size={16} />
+      <span>Sair</span>
     </button>
   );
 }

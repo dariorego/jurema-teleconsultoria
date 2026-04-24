@@ -1,5 +1,10 @@
 .credenciais
+deploy.md
 .DS_Store
 *.env
 .env.*
 node_modules/
+.claude/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+.next/

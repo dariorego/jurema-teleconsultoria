@@ -20,14 +20,16 @@ export async function POST(
   const svc = createSupabaseServiceRole();
 
   // Atribui apenas se ainda está em fila (evita corrida entre especialistas).
-  const { data, error } = await svc
+  // Admin pode puxar qualquer categoria; demais só a sua.
+  let query = svc
     .from("jurema_conversas")
     .update({ status: "em_atendimento", especialista_id: user.id })
     .eq("id", id)
-    .eq("status", "fila")
-    .eq("especialidade", perfil.especialidade ?? "")
-    .select("id")
-    .maybeSingle();
+    .eq("status", "fila");
+  if (perfil.role !== "admin") {
+    query = query.eq("especialidade", perfil.especialidade ?? "");
+  }
+  const { data, error } = await query.select("id").maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: "indisponivel" }, { status: 409 });

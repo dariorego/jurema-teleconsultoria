@@ -1,7 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { SidebarNav } from "@/components/SidebarNav";
+import { AppShell } from "@/components/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();
@@ -14,32 +16,31 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("user_id", user.id)
     .maybeSingle();
 
-  return (
-    <div className="min-h-screen grid grid-cols-[240px_1fr]">
-      <aside className="bg-whatsapp-panel border-r border-whatsapp-border flex flex-col">
-        <div className="p-4 border-b border-whatsapp-border">
-          <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
-          <div className="text-xs text-whatsapp-muted">
-            {perfil?.nome ?? user.email}
-            {perfil?.especialidade && (
-              <span className="block capitalize">{perfil.especialidade}</span>
-            )}
-            {perfil?.role === "admin" && <span className="block">Admin</span>}
-          </div>
+  const sidebar = (
+    <>
+      <div className="p-4 border-b border-whatsapp-border">
+        <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
+        <div className="text-xs text-whatsapp-muted mt-1 space-y-0.5">
+          <div className="text-whatsapp-text truncate">{perfil?.nome ?? user.email}</div>
+          {perfil?.especialidade && (
+            <div>
+              Categoria: <span className="capitalize">{perfil.especialidade}</span>
+            </div>
+          )}
+          {perfil?.role === "admin" && (
+            <div className="inline-block px-1.5 py-0.5 rounded bg-whatsapp-accent/15 text-whatsapp-accent">
+              Admin
+            </div>
+          )}
         </div>
-        <nav className="flex-1 p-2 space-y-1">
-          <Link href="/caixa" className="block px-3 py-2 rounded hover:bg-whatsapp-panel2 text-whatsapp-text">
-            Caixa
-          </Link>
-          <Link href="/dashboard" className="block px-3 py-2 rounded hover:bg-whatsapp-panel2 text-whatsapp-text">
-            Dashboard
-          </Link>
-        </nav>
-        <div className="p-2 border-t border-whatsapp-border">
-          <LogoutButton />
-        </div>
-      </aside>
-      <main className="bg-whatsapp-bg">{children}</main>
-    </div>
+      </div>
+      <SidebarNav />
+      <div className="p-2 border-t border-whatsapp-border space-y-1">
+        <ThemeToggle />
+        <LogoutButton />
+      </div>
+    </>
   );
+
+  return <AppShell sidebar={sidebar}>{children}</AppShell>;
 }

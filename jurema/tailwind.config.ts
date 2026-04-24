@@ -1,20 +1,21 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         whatsapp: {
-          bg: "#0b141a",
-          panel: "#111b21",
-          panel2: "#202c33",
-          border: "#2a3942",
-          text: "#e9edef",
-          muted: "#8696a0",
-          accent: "#00a884",
-          bubbleOut: "#005c4b",
-          bubbleIn: "#202c33",
+          bg: "var(--color-bg)",
+          panel: "var(--color-panel)",
+          panel2: "var(--color-panel2)",
+          border: "var(--color-border)",
+          text: "var(--color-text)",
+          muted: "var(--color-muted)",
+          accent: "var(--color-accent)",
+          bubbleOut: "var(--color-bubble-out)",
+          bubbleIn: "var(--color-bubble-in)",
         },
       },
     },

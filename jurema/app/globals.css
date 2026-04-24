@@ -2,5 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== Dashboard design tokens (scoped) =====
+   Activated via <div class="dashboard-v2"> wrapper. Coexists with the
+   WhatsApp-themed rest of the app without polluting its variables. */
+.dashboard-v2 {
+  --d-bg: #f5f7fa;
+  --d-surface: #ffffff;
+  --d-surface-2: #fafbfc;
+  --d-border: #e6e9ef;
+  --d-border-strong: #d8dde5;
+  --d-text: #0f1722;
+  --d-text-2: #4b5563;
+  --d-text-3: #8b93a1;
+  --d-accent: oklch(0.58 0.09 200);
+  --d-accent-soft: oklch(0.96 0.02 200);
+  --d-accent-ink: oklch(0.38 0.09 200);
+  --d-ok: oklch(0.62 0.12 155);
+  --d-warn: oklch(0.68 0.14 75);
+  --d-danger: oklch(0.60 0.17 25);
+  --d-ok-soft: oklch(0.96 0.04 155);
+  --d-warn-soft: oklch(0.96 0.06 75);
+  --d-danger-soft: oklch(0.96 0.05 25);
+  --d-shadow-sm: 0 1px 2px rgba(15, 23, 34, 0.04);
+  --d-radius: 10px;
+  --d-radius-sm: 6px;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+.dark .dashboard-v2 {
+  --d-bg: #0c1016;
+  --d-surface: #141a22;
+  --d-surface-2: #111720;
+  --d-border: #212a36;
+  --d-border-strong: #2b3642;
+  --d-text: #e6ebf2;
+  --d-text-2: #9aa4b2;
+  --d-text-3: #626c7a;
+  --d-accent: oklch(0.72 0.10 200);
+  --d-accent-soft: oklch(0.28 0.05 200);
+  --d-accent-ink: oklch(0.85 0.08 200);
+  --d-ok-soft: oklch(0.26 0.05 155);
+  --d-warn-soft: oklch(0.28 0.06 75);
+  --d-danger-soft: oklch(0.28 0.06 25);
+  --d-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.dashboard-v2 .tnum { font-variant-numeric: tabular-nums; }
+
+:root {
+  --color-bg: #f0f2f5;
+  --color-panel: #ffffff;
+  --color-panel2: #f0f2f5;
+  --color-border: #d1d7db;
+  --color-text: #111b21;
+  --color-muted: #667781;
+  --color-accent: #00a884;
+  --color-accent-hover: #008f6f;
+  --color-bubble-out: #d9fdd3;
+  --color-bubble-in: #ffffff;
+  --color-danger: #e11d48;
+  --color-danger-bg: #fee2e2;
+}
+
+.dark {
+  --color-bg: #0b141a;
+  --color-panel: #111b21;
+  --color-panel2: #202c33;
+  --color-border: #2a3942;
+  --color-text: #e9edef;
+  --color-muted: #8696a0;
+  --color-accent: #00a884;
+  --color-accent-hover: #06cf9c;
+  --color-bubble-out: #005c4b;
+  --color-bubble-in: #202c33;
+  --color-danger: #f87171;
+  --color-danger-bg: #3b1f24;
+}
+
 html, body { height: 100%; }
-body { background: #0b141a; color: #e9edef; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* Smooth cross-theme color transitions on surface elements only. */
+body, aside, main, header, section, a, button, input, textarea, [role="dialog"] {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+/* Unified focus ring. Use focus-visible so mouse clicks don't trigger the ring. */
+*:focus { outline: none; }
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

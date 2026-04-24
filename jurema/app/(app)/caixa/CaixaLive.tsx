@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AlertCircle, X } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
 type Row = {
@@ -26,6 +27,7 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
   const supabase = createSupabaseBrowser();
   const [rows, setRows] = useState<Row[]>(initial);
   const [puxando, setPuxando] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     const channel = supabase
@@ -53,10 +55,20 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
 
   async function puxar(id: string) {
     setPuxando(id);
+    setErro(null);
     const res = await fetch(`/api/conversas/${id}/puxar`, { method: "POST" });
     setPuxando(null);
-    if (res.ok) router.push(`/chat/${id}`);
-    else alert("Erro ao puxar conversa");
+    if (res.ok) {
+      router.push(`/chat/${id}`);
+      return;
+    }
+    const body = await res.json().catch(() => ({}));
+    const motivo: Record<string, string> = {
+      unauthorized: "Sessão expirada. Faça login novamente.",
+      perfil_inativo: "Seu perfil de especialista está inativo ou não cadastrado.",
+      indisponivel: "Conversa indisponível: pode ter sido puxada por outro especialista, já não estar em fila, ou não ser da sua categoria.",
+    };
+    setErro(motivo[body?.error] ?? `Erro ao puxar conversa (${res.status}): ${body?.error ?? "desconhecido"}`);
   }
 
   const fila = rows.filter((r) => r.status === "fila");
@@ -66,15 +78,34 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
   );
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 md:p-6 space-y-6">
+      {erro && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 p-3 rounded-lg text-sm"
+          style={{ background: "var(--color-danger-bg)", color: "var(--color-danger)" }}
+        >
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <span className="flex-1">{erro}</span>
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={() => setErro(null)}
+            className="shrink-0 opacity-70 hover:opacity-100"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
       <Secao titulo={`Fila (${fila.length})`}>
         {fila.length === 0 && <Vazio texto="Nenhuma conversa na fila." />}
         {fila.map((r) => (
           <Cartao key={r.id} r={r}>
             <button
+              type="button"
               onClick={() => puxar(r.id)}
               disabled={puxando === r.id}
-              className="px-3 py-1.5 rounded bg-whatsapp-accent text-white text-sm disabled:opacity-50"
+              className="px-3 py-1.5 rounded bg-whatsapp-accent text-white text-sm font-medium transition hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {puxando === r.id ? "Puxando…" : "Puxar"}
             </button>
@@ -87,8 +118,8 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
         {minhas.map((r) => (
           <Cartao key={r.id} r={r}>
             <Link
-              href={`/chat/${r.id}`}
-              className="px-3 py-1.5 rounded bg-whatsapp-panel2 text-whatsapp-text text-sm border border-whatsapp-border"
+              href={`/chat/${r.id}` as never}
+              className="px-3 py-1.5 rounded bg-whatsapp-panel2 text-whatsapp-text text-sm border border-whatsapp-border transition hover:border-whatsapp-accent"
             >
               Abrir chat
             </Link>
