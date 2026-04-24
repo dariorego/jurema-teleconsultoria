@@ -108,7 +108,13 @@ export default async function CaixaPage({
         isAdmin={isAdmin}
         especialistas={(especialistas ?? []) as EspecialistaOption[]}
       />
-      <CaixaLive initial={conversas ?? []} userId={user.id} />
+      <CaixaLive
+        initial={(conversas ?? []).map((c) => ({
+          ...c,
+          paciente: Array.isArray(c.paciente) ? (c.paciente[0] ?? null) : c.paciente,
+        }))}
+        userId={user.id}
+      />
     </div>
   );
 }
