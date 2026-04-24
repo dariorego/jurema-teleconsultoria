@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -19,8 +20,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const sidebar = (
     <>
       <div className="p-4 border-b border-whatsapp-border">
-        <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
-        <div className="text-xs text-whatsapp-muted mt-1 space-y-0.5">
+        <div className="flex items-center gap-2">
+          <Image src="/img/logoImip.png" alt="IMIP" width={28} height={28} priority className="h-7 w-auto" />
+          <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
+        </div>
+        <div className="text-xs text-whatsapp-muted mt-2 space-y-0.5">
           <div className="text-whatsapp-text truncate">{perfil?.nome ?? user.email}</div>
           {perfil?.especialidade && (
             <div>

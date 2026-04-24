@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Paperclip } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import type { Mensagem } from "@/lib/types";
 
@@ -34,7 +35,9 @@ export function ChatWindow({
   const [mensagens, setMensagens] = useState<Mensagem[]>(initialMensagens);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fim.current?.scrollIntoView({ behavior: "smooth" });
@@ -90,6 +93,27 @@ export function ChatWindow({
     else {
       const j = await res.json().catch(() => ({}));
       alert(`Erro: ${j.error ?? res.statusText}`);
+    }
+  }
+
+  async function enviarArquivo(file: File) {
+    if (uploading) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("conversaId", conversa.id);
+    fd.append("file", file);
+    if (texto.trim()) fd.append("caption", texto.trim());
+    const res = await fetch("/api/mensagens/enviar-arquivo", {
+      method: "POST",
+      body: fd,
+    });
+    setUploading(false);
+    if (res.ok) {
+      setTexto("");
+      if (fileInput.current) fileInput.current.value = "";
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(`Erro ao enviar arquivo: ${j.error ?? res.statusText}${j.detail ? ` — ${j.detail}` : ""}`);
     }
   }
 
@@ -149,7 +173,26 @@ export function ChatWindow({
         <div ref={fim} />
       </div>
 
-      <form onSubmit={enviar} className="p-3 bg-whatsapp-panel border-t border-whatsapp-border flex gap-2">
+      <form onSubmit={enviar} className="p-3 bg-whatsapp-panel border-t border-whatsapp-border flex gap-2 items-center">
+        <input
+          ref={fileInput}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void enviarArquivo(f);
+          }}
+        />
+        <button
+          type="button"
+          aria-label="Anexar arquivo"
+          onClick={() => fileInput.current?.click()}
+          disabled={!minha || conversa.status !== "em_atendimento" || uploading}
+          className="p-2 rounded-lg text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={uploading ? "Enviando…" : "Anexar arquivo"}
+        >
+          <Paperclip size={18} />
+        </button>
         <input
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
@@ -157,15 +200,17 @@ export function ChatWindow({
             conversa.status === "encerrada"
               ? "Conversa encerrada"
               : minha
-                ? "Digite uma mensagem"
+                ? uploading
+                  ? "Enviando arquivo…"
+                  : "Digite uma mensagem"
                 : "Puxe a conversa para responder"
           }
-          disabled={!minha || conversa.status !== "em_atendimento" || enviando}
+          disabled={!minha || conversa.status !== "em_atendimento" || enviando || uploading}
           className="flex-1 px-4 py-2 rounded-lg bg-whatsapp-panel2 border border-whatsapp-border text-whatsapp-text focus:outline-none focus:border-whatsapp-accent disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={!minha || conversa.status !== "em_atendimento" || enviando || !texto.trim()}
+          disabled={!minha || conversa.status !== "em_atendimento" || enviando || uploading || !texto.trim()}
           className="px-4 py-2 rounded-lg bg-whatsapp-accent text-white disabled:opacity-50"
         >
           Enviar
@@ -177,6 +222,8 @@ export function ChatWindow({
 
 function Bolha({ m }: { m: Mensagem }) {
   const inbound = m.direction === "inbound";
+  const mediaUrl = m.media_path ? `/api/mensagens/${m.id}/media` : null;
+  const isImage = mediaUrl && m.media_mime?.startsWith("image/");
   return (
     <div className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
       <div
@@ -184,7 +231,31 @@ function Bolha({ m }: { m: Mensagem }) {
           inbound ? "bg-whatsapp-bubbleIn text-whatsapp-text" : "bg-whatsapp-bubbleOut text-white"
         }`}
       >
-        {m.content ?? <em className="text-whatsapp-muted">({m.tipo})</em>}
+        {mediaUrl && (
+          <div className="mb-1">
+            {isImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mediaUrl}
+                alt={m.content ?? "Imagem"}
+                className="rounded max-w-full max-h-64 object-contain"
+              />
+            ) : (
+              <a
+                href={mediaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 underline underline-offset-2"
+              >
+                📎 {m.content ?? "Arquivo"}
+              </a>
+            )}
+          </div>
+        )}
+        {!mediaUrl && (m.content ?? <em className="opacity-70">({m.tipo})</em>)}
+        {mediaUrl && m.content && m.content !== "Arquivo" && (
+          <div className="text-xs opacity-90">{m.content}</div>
+        )}
         <div className="text-[10px] opacity-60 mt-1 text-right">
           {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
           {!inbound && m.status ? ` • ${m.status}` : ""}

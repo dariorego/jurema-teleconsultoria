@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
@@ -38,7 +39,8 @@ export default function LoginPage() {
         aria-label="Formulário de login"
         className="w-full max-w-sm p-8 rounded-2xl bg-whatsapp-panel border border-whatsapp-border space-y-5 shadow-sm"
       >
-        <div className="text-center space-y-1">
+        <div className="flex flex-col items-center gap-2">
+          <Image src="/img/logoImip.png" alt="IMIP" width={64} height={64} priority className="h-14 w-auto" />
           <h1 className="text-2xl font-semibold text-whatsapp-text">JUREMA</h1>
           <p className="text-sm text-whatsapp-muted">Teleconsultoria IMIP</p>
         </div>
