@@ -7,7 +7,10 @@ import { CategoryChart, type CategoryRow } from "@/components/dashboard/Category
 import { HoursChart, type HourBucket } from "@/components/dashboard/HoursChart";
 import { DashboardTopBar } from "@/components/dashboard/TopBar";
 import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
-import { FilaTable, type FilaRow } from "@/components/dashboard/FilaTable";
+import {
+  AtendimentosTable,
+  type AtendimentoRow,
+} from "@/components/dashboard/AtendimentosTable";
 
 export const dynamic = "force-dynamic";
 
@@ -30,18 +33,46 @@ function formatDuration(ms: number) {
 
 type Status = "fila" | "em_atendimento" | "aguardando_avaliacao" | "encerrada";
 
+const PER_PAGE_DEFAULT = 15;
+const PER_PAGE_ALLOWED = [15, 20, 50, 100];
+
+function parsePer(raw: string | undefined): number {
+  const n = parseInt(raw ?? "", 10);
+  return PER_PAGE_ALLOWED.includes(n) ? n : PER_PAGE_DEFAULT;
+}
+function parsePage(raw: string | undefined): number {
+  const n = parseInt(raw ?? "", 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; cats?: string }>;
+  searchParams: Promise<{
+    period?: string;
+    cats?: string;
+    fp?: string;
+    fn?: string;
+    ap?: string;
+    an?: string;
+    xp?: string;
+    xn?: string;
+  }>;
 }) {
   const supabase = await createSupabaseServer();
-  const { period: periodRaw, cats: catsRaw } = await searchParams;
-  const periodDays = Math.max(1, Math.min(365, parseInt(periodRaw ?? "7", 10) || 7));
-  const cats = (catsRaw ?? "")
+  const sp = await searchParams;
+  const periodDays = Math.max(1, Math.min(365, parseInt(sp.period ?? "7", 10) || 7));
+  const cats = (sp.cats ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const filaPage = parsePage(sp.fp);
+  const filaPer = parsePer(sp.fn);
+  const ematPage = parsePage(sp.ap);
+  const ematPer = parsePer(sp.an);
+  const finPage = parsePage(sp.xp);
+  const finPer = parsePer(sp.xn);
 
   const now = new Date();
   const todayStart = startOfDay(now);
@@ -52,6 +83,27 @@ export default async function Dashboard({
   const periodStart = new Date(now);
   periodStart.setDate(periodStart.getDate() - periodDays);
 
+  // Helper inline para construir queries de listagem de cada status,
+  // aplicando filtro de categoria e paginação por offset.
+  const baseSelect = `id, especialidade, created_at, encerrada_at,
+    paciente:jurema_pacientes(primeiro_nome, ultimo_nome, wa_id)`;
+  function buildListQuery(
+    status: "fila" | "em_atendimento" | "encerrada",
+    page: number,
+    per: number,
+    orderCol: "created_at" | "encerrada_at",
+  ) {
+    let q = supabase
+      .from("jurema_conversas")
+      .select(baseSelect, { count: "exact" })
+      .eq("status", status);
+    if (orderCol === "encerrada_at") q = q.not("encerrada_at", "is", null);
+    if (cats.length > 0) q = q.in("especialidade", cats);
+    const from = (page - 1) * per;
+    const to = from + per - 1;
+    return q.order(orderCol, { ascending: true }).range(from, to);
+  }
+
   const [
     { count: abertas },
     { count: emFila },
@@ -59,7 +111,9 @@ export default async function Dashboard({
     { data: recentConversas },
     { data: solicitacoes },
     { data: encerradas },
-    { data: filaRows },
+    { data: filaList, count: filaCount },
+    { data: ematList, count: ematCount },
+    { data: finList, count: finCount },
     { data: categoriasAtivas },
   ] = await Promise.all([
     supabase
@@ -88,14 +142,9 @@ export default async function Dashboard({
       .eq("status", "encerrada")
       .not("encerrada_at", "is", null)
       .gte("encerrada_at", new Date(Date.now() - 7 * 86400000).toISOString()),
-    supabase
-      .from("jurema_conversas")
-      .select(`
-        id, especialidade, created_at,
-        paciente:jurema_pacientes(primeiro_nome, ultimo_nome, wa_id)
-      `)
-      .eq("status", "fila")
-      .order("created_at", { ascending: true }),
+    buildListQuery("fila", filaPage, filaPer, "created_at"),
+    buildListQuery("em_atendimento", ematPage, ematPer, "created_at"),
+    buildListQuery("encerrada", finPage, finPer, "encerrada_at"),
     supabase
       .from("jurema_especialidades")
       .select("codigo, rotulo, ordem, ativo")
@@ -167,14 +216,31 @@ export default async function Dashboard({
     ? durations.reduce((a, b) => a + b, 0) / durations.length
     : 0;
 
-  // Fila ordenada (filtra por categoria se houver).
-  type FilaRaw = FilaRow & { paciente: FilaRow["paciente"] | FilaRow["paciente"][] };
-  const fila: FilaRow[] = ((filaRows ?? []) as FilaRaw[])
-    .filter((r) => filterCats(r.especialidade))
-    .map((r) => ({
-      ...r,
+  // Linhas das 3 tabelas — normaliza paciente (array → objeto) e refTimestamp.
+  type RawListRow = {
+    id: string;
+    especialidade: string;
+    created_at: string;
+    encerrada_at: string | null;
+    paciente: AtendimentoRow["paciente"] | AtendimentoRow["paciente"][];
+  };
+  function normalizeRow(r: RawListRow, ref: "created_at" | "encerrada_at"): AtendimentoRow {
+    return {
+      id: r.id,
+      especialidade: r.especialidade,
+      refTimestamp: ref === "encerrada_at" ? r.encerrada_at ?? r.created_at : r.created_at,
       paciente: Array.isArray(r.paciente) ? (r.paciente[0] ?? null) : r.paciente,
-    }));
+    };
+  }
+  const filaRows: AtendimentoRow[] = ((filaList ?? []) as RawListRow[]).map((r) =>
+    normalizeRow(r, "created_at"),
+  );
+  const ematRows: AtendimentoRow[] = ((ematList ?? []) as RawListRow[]).map((r) =>
+    normalizeRow(r, "created_at"),
+  );
+  const finRows: AtendimentoRow[] = ((finList ?? []) as RawListRow[]).map((r) =>
+    normalizeRow(r, "encerrada_at"),
+  );
 
   const peakHourBucket = hours.reduce(
     (p, c) => {
@@ -287,7 +353,56 @@ export default async function Dashboard({
         </Panel>
       </div>
 
-      <FilaTable rows={fila} basePath={BASE_PATH} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <AtendimentosTable
+          title="Em fila sem atendimento"
+          subtitle={
+            (filaCount ?? 0) === 0
+              ? "Nenhuma conversa aguardando"
+              : `${filaCount} conversa(s) — mais antigas primeiro`
+          }
+          rows={filaRows}
+          total={filaCount ?? 0}
+          page={filaPage}
+          perPage={filaPer}
+          paramPrefix="f"
+          tempoLabel="Aberta há"
+          tempoTone="warn"
+          basePath={BASE_PATH}
+        />
+        <AtendimentosTable
+          title="Em atendimento"
+          subtitle={
+            (ematCount ?? 0) === 0
+              ? "Nenhuma conversa em atendimento"
+              : `${ematCount} conversa(s) — mais antigas primeiro`
+          }
+          rows={ematRows}
+          total={ematCount ?? 0}
+          page={ematPage}
+          perPage={ematPer}
+          paramPrefix="a"
+          tempoLabel="Em atendimento há"
+          tempoTone="accent"
+          basePath={BASE_PATH}
+        />
+        <AtendimentosTable
+          title="Finalizados"
+          subtitle={
+            (finCount ?? 0) === 0
+              ? "Nenhuma conversa finalizada"
+              : `${finCount} conversa(s) — mais antigas primeiro`
+          }
+          rows={finRows}
+          total={finCount ?? 0}
+          page={finPage}
+          perPage={finPer}
+          paramPrefix="x"
+          tempoLabel="Finalizada há"
+          tempoTone="muted"
+          basePath={BASE_PATH}
+        />
+      </div>
 
       <div
         style={{
