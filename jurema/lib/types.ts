@@ -1,4 +1,13 @@
-export type Especialidade = "medico" | "psicologo" | "nutricao" | "assistente_social";
+/** Código da categoria — mantido como string genérica desde sprint 5
+ * (categorias passaram a ser dinâmicas via tabela jurema_especialidades). */
+export type Especialidade = string;
+
+export type Categoria = {
+  codigo: string;
+  rotulo: string;
+  ordem: number;
+  ativo: boolean;
+};
 export type StatusConversa = "fila" | "em_atendimento" | "aguardando_avaliacao" | "encerrada";
 export type Direction = "inbound" | "outbound";
 export type TipoMensagem = "text" | "image" | "audio" | "video" | "document" | "interactive" | "template" | "system";

@@ -2,22 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, LayoutDashboard } from "lucide-react";
+import { Inbox, LayoutDashboard, Settings } from "lucide-react";
 import type { ComponentType } from "react";
 
 type Item = { href: string; label: string; icon: ComponentType<{ size?: number }> };
 
-const items: Item[] = [
+const baseItems: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/caixa", label: "Caixa", icon: Inbox },
 ];
 
-export function SidebarNav() {
+const adminItem: Item = { href: "/admin/usuarios", label: "Admin", icon: Settings };
+
+export function SidebarNav({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const items = isAdmin ? [...baseItems, adminItem] : baseItems;
   return (
     <nav className="flex-1 p-2 space-y-1">
       {items.map(({ href, label, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(href + "/");
+        const active =
+          href === "/admin/usuarios"
+            ? pathname.startsWith("/admin")
+            : pathname === href || pathname.startsWith(href + "/");
         return (
           <Link
             key={href}

@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           )}
         </div>
       </div>
-      <SidebarNav />
+      <SidebarNav isAdmin={perfil?.role === "admin"} />
       <div className="p-2 border-t border-whatsapp-border space-y-1">
         <ThemeToggle />
         <LogoutButton />

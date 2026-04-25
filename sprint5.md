@@ -1,0 +1,4 @@
+- Vamos criar o ambiente para criar usuários.
+- Rever o processo de criação por categoria ( Varios usuários médicos, nutricionista e etc)
+- apenas o usuário com a flag de admin pode criar usuarios e colocá-lo no grupo.
+- Tornar o processo de criar categoria tipo medico, nutricionista, assisitente social, etc dinamico.
