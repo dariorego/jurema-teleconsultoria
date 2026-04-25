@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 export type EspecialistaOption = { user_id: string; nome: string | null };
 
@@ -16,6 +16,21 @@ export function CaixaFilters({
   const pathname = usePathname();
   const sp = useSearchParams();
   const [pending, start] = useTransition();
+  const [qDraft, setQDraft] = useState(sp.get("q") ?? "");
+
+  // Sincroniza input local quando URL muda externamente.
+  useEffect(() => {
+    setQDraft(sp.get("q") ?? "");
+  }, [sp]);
+
+  // Debounce 350ms na busca.
+  useEffect(() => {
+    const current = sp.get("q") ?? "";
+    if (qDraft === current) return;
+    const t = setTimeout(() => update({ q: qDraft || null }), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDraft]);
 
   function update(patch: Record<string, string | null>) {
     const next = new URLSearchParams(sp);
@@ -31,10 +46,21 @@ export function CaixaFilters({
   const from = sp.get("from") ?? "";
   const to = sp.get("to") ?? "";
   const especialistaId = sp.get("especialista") ?? "";
-  const hasAny = from || to || especialistaId;
+  const q = sp.get("q") ?? "";
+  const hasAny = from || to || especialistaId || q;
 
   return (
     <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border border-whatsapp-border bg-whatsapp-panel">
+      <label className="flex flex-col gap-1 text-xs text-whatsapp-muted flex-1 min-w-[200px]">
+        <span>Buscar (nome ou conteúdo da mensagem)</span>
+        <input
+          type="search"
+          value={qDraft}
+          onChange={(e) => setQDraft(e.target.value)}
+          placeholder="ex: João, dor de cabeça…"
+          className="px-2 py-1.5 rounded bg-whatsapp-panel2 border border-whatsapp-border text-whatsapp-text text-sm focus:outline-none focus:border-whatsapp-accent"
+        />
+      </label>
       <label className="flex flex-col gap-1 text-xs text-whatsapp-muted">
         <span>De</span>
         <input
@@ -73,7 +99,10 @@ export function CaixaFilters({
       {hasAny && (
         <button
           type="button"
-          onClick={() => update({ from: null, to: null, especialista: null })}
+          onClick={() => {
+            setQDraft("");
+            update({ from: null, to: null, especialista: null, q: null });
+          }}
           className="text-xs text-whatsapp-muted hover:text-whatsapp-text underline underline-offset-2"
         >
           Limpar

@@ -1,21 +1,15 @@
 export type CategoryRow = {
   label: string;
   total: number;
-  acute?: number;
-  followup?: number;
+  /** Quantas dessas estão em aberto (pendente + em_andamento). */
+  emAberto?: number;
 };
 
-export function CategoryChart({
-  data,
-  style = "grouped",
-}: {
-  data: CategoryRow[];
-  style?: "grouped" | "solid";
-}) {
+export function CategoryChart({ data }: { data: CategoryRow[] }) {
   if (data.length === 0) {
     return (
       <div style={{ fontSize: 13, color: "var(--d-text-3)", fontStyle: "italic" }}>
-        Nenhuma solicitação ainda.
+        Nenhuma solicitação no período.
       </div>
     );
   }
@@ -24,8 +18,7 @@ export function CategoryChart({
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {data.map((row) => {
         const pctTotal = (row.total / max) * 100;
-        const pctAcute = ((row.acute ?? 0) / max) * 100;
-        const pctFollow = ((row.followup ?? 0) / max) * 100;
+        const pctEmAberto = ((row.emAberto ?? 0) / max) * 100;
         return (
           <div
             key={row.label}
@@ -59,46 +52,31 @@ export function CategoryChart({
                 border: "1px solid var(--d-border)",
               }}
             >
-              {style === "grouped" && (row.acute !== undefined || row.followup !== undefined) ? (
-                <>
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: `${pctAcute}%`,
-                      background: "var(--d-accent)",
-                      transition: "width .6s cubic-bezier(.2,.8,.2,1)",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: `${pctAcute}%`,
-                      top: 0,
-                      bottom: 0,
-                      width: `${pctFollow}%`,
-                      background: "var(--d-accent)",
-                      opacity: 0.45,
-                      transition:
-                        "width .6s cubic-bezier(.2,.8,.2,1), left .6s cubic-bezier(.2,.8,.2,1)",
-                    }}
-                  />
-                </>
-              ) : (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: `${pctTotal}%`,
-                    background: "var(--d-accent)",
-                    transition: "width .6s cubic-bezier(.2,.8,.2,1)",
-                  }}
-                />
-              )}
+              {/* Barra clara = total do período */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: `${pctTotal}%`,
+                  background: "var(--d-accent)",
+                  opacity: 0.45,
+                  transition: "width .6s cubic-bezier(.2,.8,.2,1)",
+                }}
+              />
+              {/* Barra escura sobreposta = em aberto (subset do total) */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: `${pctEmAberto}%`,
+                  background: "var(--d-accent)",
+                  transition: "width .6s cubic-bezier(.2,.8,.2,1)",
+                }}
+              />
             </div>
             <div
               className="tnum"

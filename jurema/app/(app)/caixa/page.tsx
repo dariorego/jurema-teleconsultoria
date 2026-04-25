@@ -17,7 +17,7 @@ function formatDuration(ms: number) {
 export default async function CaixaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; especialista?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; especialista?: string; q?: string }>;
 }) {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -30,10 +30,45 @@ export default async function CaixaPage({
     .maybeSingle();
   const isAdmin = perfil?.role === "admin";
 
-  const { from, to, especialista } = await searchParams;
+  const { from, to, especialista, q: qRaw } = await searchParams;
+  const q = qRaw?.trim() ?? "";
   const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : null;
   const toIso = to ? new Date(`${to}T23:59:59.999`).toISOString() : null;
-  const hasFilter = Boolean(fromIso || toIso || especialista);
+  const hasFilter = Boolean(fromIso || toIso || especialista || q);
+
+  // Pré-busca: se houver q, resolve quais conversas combinam (por nome do paciente
+  // OU por conteúdo de mensagem) antes de aplicar os demais filtros.
+  let conversaIdsBusca: string[] | null = null;
+  if (q) {
+    const escaped = q.replace(/[%_]/g, (c) => `\\${c}`);
+    const [{ data: pacientes }, { data: mensagens }] = await Promise.all([
+      supabase
+        .from("jurema_pacientes")
+        .select("id")
+        .or(`primeiro_nome.ilike.%${escaped}%,ultimo_nome.ilike.%${escaped}%`),
+      supabase
+        .from("jurema_mensagens")
+        .select("conversa_id")
+        .ilike("content", `%${escaped}%`)
+        .not("conversa_id", "is", null)
+        .limit(1000),
+    ]);
+    const pacienteIds = (pacientes ?? []).map((p) => p.id as string);
+    const idsByMsg = (mensagens ?? [])
+      .map((m) => m.conversa_id as string | null)
+      .filter((x): x is string => !!x);
+
+    const set = new Set<string>(idsByMsg);
+    if (pacienteIds.length > 0) {
+      const { data: porPaciente } = await supabase
+        .from("jurema_conversas")
+        .select("id")
+        .in("paciente_id", pacienteIds);
+      (porPaciente ?? []).forEach((r) => set.add(r.id as string));
+    }
+    conversaIdsBusca = Array.from(set);
+    if (conversaIdsBusca.length === 0) conversaIdsBusca = ["00000000-0000-0000-0000-000000000000"];
+  }
 
   // Lista de conversas para a Caixa. Sem filtro: apenas ativas (fila+em_atend).
   // Com filtro: usa janela por created_at e inclui encerradas para busca histórica.
@@ -49,6 +84,7 @@ export default async function CaixaPage({
     if (fromIso) query = query.gte("created_at", fromIso);
     if (toIso) query = query.lte("created_at", toIso);
     if (isAdmin && especialista) query = query.eq("especialista_id", especialista);
+    if (conversaIdsBusca) query = query.in("id", conversaIdsBusca);
   } else {
     query = query.in("status", ["fila", "em_atendimento"]);
   }
