@@ -23,10 +23,9 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Com basePath="/jurema", request.nextUrl.pathname vem SEM o prefixo
-  // ("/login", "/dashboard" etc.) — Next já tirou. Para redirects,
-  // precisamos RE-incluir o prefixo na url gerada.
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  // request.nextUrl.pathname vem SEM o basePath; ao setar pathname para
+  // "/login" e usar NextResponse.redirect com a URL clonada, o Next
+  // re-aplica o basePath automaticamente na resposta.
   const pathname = request.nextUrl.pathname;
   const isAuthRoute = pathname.startsWith("/login");
   const isApi = pathname.startsWith("/api/");
@@ -35,13 +34,13 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isAuthRoute && !isPublicApi) {
     if (isApi) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     const url = request.nextUrl.clone();
-    url.pathname = `${basePath}/login`;
+    url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = `${basePath}/dashboard`;
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
