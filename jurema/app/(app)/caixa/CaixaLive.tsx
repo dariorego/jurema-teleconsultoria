@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, X } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { apiUrl } from "@/lib/basePath";
 
 type Row = {
   id: string;
@@ -56,7 +57,7 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
   async function puxar(id: string) {
     setPuxando(id);
     setErro(null);
-    const res = await fetch(`/api/conversas/${id}/puxar`, { method: "POST" });
+    const res = await fetch(apiUrl(`/api/conversas/${id}/puxar`), { method: "POST" });
     setPuxando(null);
     if (res.ok) {
       router.push(`/chat/${id}`);

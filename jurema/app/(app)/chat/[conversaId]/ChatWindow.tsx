@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Paperclip } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
+import { apiUrl, BASE_PATH } from "@/lib/basePath";
 import type { Mensagem } from "@/lib/types";
 
 type Conversa = {
@@ -84,7 +85,7 @@ export function ChatWindow({
     const t = texto.trim();
     if (!t) return;
     setEnviando(true);
-    const res = await fetch("/api/mensagens/enviar", {
+    const res = await fetch(apiUrl("/api/mensagens/enviar"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ conversaId: conversa.id, texto: t }),
@@ -104,7 +105,7 @@ export function ChatWindow({
     fd.append("conversaId", conversa.id);
     fd.append("file", file);
     if (texto.trim()) fd.append("caption", texto.trim());
-    const res = await fetch("/api/mensagens/enviar-arquivo", {
+    const res = await fetch(apiUrl("/api/mensagens/enviar-arquivo"), {
       method: "POST",
       body: fd,
     });
@@ -125,7 +126,7 @@ export function ChatWindow({
       )
     )
       return;
-    const res = await fetch(`/api/conversas/${conversa.id}/encerrar`, { method: "POST" });
+    const res = await fetch(apiUrl(`/api/conversas/${conversa.id}/encerrar`), { method: "POST" });
     if (res.ok) router.push("/caixa");
     else {
       const j = await res.json().catch(() => ({}));
@@ -243,7 +244,7 @@ export function ChatWindow({
 
 function Bolha({ m }: { m: Mensagem }) {
   const inbound = m.direction === "inbound";
-  const mediaUrl = m.media_path ? `/api/mensagens/${m.id}/media` : null;
+  const mediaUrl = m.media_path ? `${BASE_PATH}/api/mensagens/${m.id}/media` : null;
   const isImage = mediaUrl && m.media_mime?.startsWith("image/");
   return (
     <div className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
