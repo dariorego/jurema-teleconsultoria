@@ -6,6 +6,7 @@ import { AlertCircle } from "lucide-react";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BASE_PATH } from "@/lib/basePath";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,8 +31,7 @@ export default function LoginPage() {
     <div
       className="min-h-screen flex items-center justify-center bg-whatsapp-bg p-4"
       style={{
-        backgroundImage:
-          "linear-gradient(var(--login-bg-overlay), var(--login-bg-overlay)), url('/img/login-bg.jpg')",
+        backgroundImage: `linear-gradient(var(--login-bg-overlay), var(--login-bg-overlay)), url('${BASE_PATH}/img/login-bg.jpg')`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -60,11 +60,12 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <Image
-              src="/img/logoImip.png"
+              src={`${BASE_PATH}/img/logoImip.png`}
               alt="IMIP"
               width={96}
               height={96}
               priority
+              unoptimized
               className="h-16 w-auto"
             />
           </div>

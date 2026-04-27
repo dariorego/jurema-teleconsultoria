@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav } from "@/components/SidebarNav";
 import { AppShell } from "@/components/AppShell";
+import { BASE_PATH } from "@/lib/basePath";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServer();
@@ -21,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <div className="p-4 border-b border-whatsapp-border">
         <div className="flex items-center gap-2">
-          <Image src="/img/logoImip.png" alt="IMIP" width={28} height={28} priority className="h-7 w-auto" />
+          <Image src={`${BASE_PATH}/img/logoImip.png`} alt="IMIP" width={28} height={28} priority unoptimized className="h-7 w-auto" />
           <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
         </div>
         <div className="text-xs text-whatsapp-muted mt-2 space-y-0.5">
