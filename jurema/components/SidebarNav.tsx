@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Inbox, LayoutDashboard, Settings } from "lucide-react";
+import { HelpCircle, Inbox, LayoutDashboard, Settings } from "lucide-react";
 import type { ComponentType } from "react";
 
 type Item = { href: string; label: string; icon: ComponentType<{ size?: number }> };
@@ -10,6 +10,7 @@ type Item = { href: string; label: string; icon: ComponentType<{ size?: number }
 const baseItems: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/caixa", label: "Caixa", icon: Inbox },
+  { href: "/ajuda", label: "Ajuda", icon: HelpCircle },
 ];
 
 const adminItem: Item = { href: "/admin/usuarios", label: "Admin", icon: Settings };

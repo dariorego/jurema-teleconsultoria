@@ -250,7 +250,9 @@ function Bolha({ m }: { m: Mensagem }) {
     <div className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
       <div
         className={`max-w-[70%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
-          inbound ? "bg-whatsapp-bubbleIn text-whatsapp-text" : "bg-whatsapp-bubbleOut text-white"
+          inbound
+            ? "bg-whatsapp-bubbleIn text-whatsapp-text border border-whatsapp-border"
+            : "bg-whatsapp-bubbleOut text-whatsapp-text"
         }`}
       >
         {mediaUrl && (
