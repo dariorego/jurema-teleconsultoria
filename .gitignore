@@ -9,3 +9,4 @@ tsconfig.tsbuildinfo
 *.tsbuildinfo
 .next/
 deployDocker.md
+~$*
