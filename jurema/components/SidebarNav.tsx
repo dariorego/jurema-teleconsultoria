@@ -30,15 +30,16 @@ export function SidebarNav({ isAdmin = false }: { isAdmin?: boolean }) {
             key={href}
             href={href as never}
             aria-current={active ? "page" : undefined}
+            title={label}
             className={[
-              "flex items-center gap-2 px-3 py-2 rounded text-sm",
+              "sb-item flex items-center gap-2 px-3 py-2 rounded text-sm",
               active
                 ? "bg-whatsapp-panel2 text-whatsapp-text font-medium"
                 : "text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2",
             ].join(" ")}
           >
             <Icon size={16} />
-            <span>{label}</span>
+            <span className="sb-label">{label}</span>
           </Link>
         );
       })}

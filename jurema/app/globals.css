@@ -108,6 +108,24 @@ select:focus-visible,
   border-radius: 4px;
 }
 
+/* ===== Sidebar retrátil =====
+   Quando o aside ganha [data-collapsed="true"], escondemos todos os
+   labels e blocos textuais e centralizamos os ícones em botões/links. */
+aside[data-collapsed="true"] .sb-label,
+aside[data-collapsed="true"] .sb-block { display: none !important; }
+aside[data-collapsed="true"] .sb-item {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  gap: 0 !important;
+}
+aside[data-collapsed="true"] .sb-header {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  display: flex;
+  justify-content: center;
+}
+
 /* ===== Tipografia do manual de Ajuda =====
    Wrapper aplicado em <article class="manual"> dentro de /ajuda. Substitui
    @tailwindcss/typography (sem dependência) e respeita os tokens de tema. */

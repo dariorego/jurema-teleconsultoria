@@ -20,12 +20,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const sidebar = (
     <>
-      <div className="p-4 border-b border-whatsapp-border">
+      <div className="sb-header p-4 border-b border-whatsapp-border">
         <div className="flex items-center gap-2">
-          <Image src={`${BASE_PATH}/img/logoImip.png`} alt="IMIP" width={28} height={28} priority unoptimized className="h-7 w-auto" />
-          <div className="text-lg font-semibold text-whatsapp-text">JUREMA</div>
+          <Image src={`${BASE_PATH}/img/logoImip.png`} alt="IMIP" width={28} height={28} priority unoptimized className="h-7 w-auto shrink-0" />
+          <div className="sb-label text-lg font-semibold text-whatsapp-text">JUREMA</div>
         </div>
-        <div className="text-xs text-whatsapp-muted mt-2 space-y-0.5">
+        <div className="sb-block text-xs text-whatsapp-muted mt-2 space-y-0.5">
           <div className="text-whatsapp-text truncate">{perfil?.nome ?? user.email}</div>
           {perfil?.especialidade && (
             <div>

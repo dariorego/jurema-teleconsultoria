@@ -78,15 +78,16 @@ export function AppShell({
           Garante que "Sair" esteja sempre visível mesmo com muitos itens. */}
       <aside
         data-collapsed={collapsed ? "true" : "false"}
-        className="hidden md:flex sticky top-0 self-start h-screen bg-whatsapp-panel border-r border-whatsapp-border flex-col overflow-hidden"
+        className="hidden md:flex sticky top-0 self-start h-screen bg-whatsapp-panel border-r border-whatsapp-border flex-col"
       >
-        <div className="relative flex-1 flex flex-col min-h-0">{sidebar}</div>
+        <div className="flex-1 flex flex-col min-h-0">{sidebar}</div>
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           aria-expanded={!collapsed}
-          className="absolute -right-3 top-6 z-10 w-6 h-6 grid place-items-center rounded-full border border-whatsapp-border bg-whatsapp-panel text-whatsapp-muted hover:text-whatsapp-text shadow-sm"
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+          className="absolute top-1/2 -translate-y-1/2 -right-3 z-20 w-6 h-6 grid place-items-center rounded-full border border-whatsapp-border bg-whatsapp-panel text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2 shadow-sm transition-transform"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
