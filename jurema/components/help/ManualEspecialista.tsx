@@ -46,6 +46,18 @@ export function ManualEspecialista() {
         contato com a equipe de TI do IMIP.
       </p>
 
+      <h3>2.4. Trocar minha senha</h3>
+      <p>
+        A qualquer momento, com você logado, é possível trocar a senha em <strong>Perfil → Trocar
+        senha</strong> (item no rodapé do menu lateral). Defina a nova senha (mínimo 8 caracteres),
+        confirme, e a sessão atual continua ativa — só usará a senha nova no próximo login.
+      </p>
+      <blockquote>
+        <strong>Atenção:</strong> a tela de troca de senha não pede a senha atual. Mantenha sua
+        estação de trabalho bloqueada quando se ausentar para evitar que outra pessoa altere sua
+        senha enquanto você estiver longe.
+      </blockquote>
+
       <h2>3. Dashboard</h2>
       <p>
         O Dashboard é a tela inicial após o login. Ele resume o atendimento e ajuda você a entender

@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SidebarNav } from "@/components/SidebarNav";
 import { AppShell } from "@/components/AppShell";
+import { PerfilLink } from "@/components/PerfilLink";
 import { BASE_PATH } from "@/lib/basePath";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SidebarNav isAdmin={perfil?.role === "admin"} />
       <div className="p-2 border-t border-whatsapp-border space-y-1">
         <ThemeToggle />
+        <PerfilLink />
         <LogoutButton />
       </div>
     </>
