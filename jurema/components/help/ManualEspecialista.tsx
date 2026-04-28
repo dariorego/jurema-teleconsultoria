@@ -159,7 +159,16 @@ export function ManualEspecialista() {
         em fila, ou não ser da sua categoria."</em>
       </p>
 
-      <h3>4.4. Janela de 24 horas</h3>
+      <h3>4.4. Conversas vindas de videochamada</h3>
+      <p>
+        Quando o paciente pediu uma <strong>videoconferência</strong>, o admin trata o
+        agendamento separadamente (envia o link de Meet/Zoom). Após o admin marcar o pedido como
+        atendido, uma nova conversa entra na sua fila normal — com uma <em>mensagem de sistema
+        no início</em> mostrando o link e a data combinados pelo admin. Você puxa, lê o que foi
+        agendado, e segue o atendimento normalmente (texto e/ou videochamada).
+      </p>
+
+      <h3>4.5. Janela de 24 horas</h3>
       <p>
         O WhatsApp Business só permite que profissionais respondam <strong>dentro de 24h após a
         última mensagem do paciente</strong>. A plataforma exibe esse tempo no chat:

@@ -419,8 +419,16 @@ pendências, e a tab "Aguardando Link" também mostra o contador.
    e envie ao paciente pelo canal mais apropriado.
 4. Anote o link/data/horário no campo **Observações** da linha (clique pra
    editar; salva ao sair do campo).
-5. Clique em **"Atendida"** — sai da fila, status muda para `concluido` e
-   o badge da sidebar diminui automaticamente.
+5. Clique em **"Atendida"**. A solicitação sai da fila *e* a plataforma
+   **cria automaticamente uma nova conversa em fila** para o especialista
+   da mesma categoria do solicitante. As observações que você anotou viram
+   uma mensagem de sistema na conversa, então o especialista vê o link/data
+   assim que puxar.
+
+> **Exemplo:** o paciente pediu videochamada com médico → cai em "Aguardando
+> Link" → admin envia o link e clica "Atendida" → uma conversa entra na
+> fila *Médico* → o médico puxa, vê a mensagem de sistema com o link, e
+> faz o acompanhamento (texto e/ou vídeo).
 
 ### Cancelar
 

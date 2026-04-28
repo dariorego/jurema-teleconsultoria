@@ -111,10 +111,18 @@ export function ManualAdmin() {
           Anote o link/data/horário no campo <em>Observações</em> da linha (clique pra editar; salva ao sair do campo).
         </li>
         <li>
-          Clique em <strong>"Atendida"</strong> — a solicitação sai da fila e é marcada como
-          <code>concluido</code>. O badge da sidebar diminui automaticamente.
+          Clique em <strong>"Atendida"</strong>. A solicitação sai da fila <em>e</em> a plataforma
+          <strong> cria automaticamente uma nova conversa em fila</strong> para o especialista da
+          mesma categoria do solicitante. As observações que você anotou viram uma mensagem de
+          sistema na conversa, então o especialista vê o link/data assim que puxar.
         </li>
       </ol>
+      <blockquote>
+        Exemplo: o paciente pediu videochamada com médico → cai em "Aguardando Link" →
+        admin envia o link e clica "Atendida" → uma conversa entra na fila <em>Médico</em> →
+        o médico puxa, vê a mensagem de sistema com o link, e faz o acompanhamento (texto e/ou
+        vídeo).
+      </blockquote>
 
       <h3>3.4.2. Cancelar</h3>
       <p>

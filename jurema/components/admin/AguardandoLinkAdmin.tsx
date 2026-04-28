@@ -45,21 +45,28 @@ export function AguardandoLinkAdmin({ initial }: { initial: SolicitacaoLink[] })
       body: JSON.stringify(body),
     });
     setSavingId(null);
+    const j = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
       alert(`Erro: ${j.error}${j.detail ? ` — ${j.detail}` : ""}`);
-      return false;
+      return null;
     }
     start(() => router.refresh());
-    return true;
+    return j as { ok: boolean; conversa_id?: string | null; message?: string };
   }
 
   async function marcarAtendida(s: SolicitacaoLink) {
     const nome = s.paciente
       ? `${s.paciente.primeiro_nome} ${s.paciente.ultimo_nome ?? ""}`.trim()
       : "este paciente";
-    if (!confirm(`Marcar a videoconferência de ${nome} como atendida?\n\nA solicitação sai da fila Aguardando Link.`)) return;
-    await patch(s.id, { status: "concluido" });
+    if (
+      !confirm(
+        `Marcar a videoconferência de ${nome} como atendida?\n\n` +
+          `A solicitação sai daqui e uma nova conversa entra na fila do especialista de ${s.especialidade_rotulo} para o acompanhamento.`,
+      )
+    )
+      return;
+    const result = await patch(s.id, { status: "concluido" });
+    if (result?.message) alert(result.message);
   }
 
   async function cancelar(s: SolicitacaoLink) {
