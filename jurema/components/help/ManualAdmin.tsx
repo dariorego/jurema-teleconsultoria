@@ -99,29 +99,36 @@ export function ManualAdmin() {
         entrar na seção.
       </p>
 
-      <h3>3.4.1. Como atender</h3>
+      <h3>3.4.1. Dois fluxos de atendimento</h3>
+      <p>
+        Cada linha tem três botões: <strong>Abrir</strong>, <strong>Atendida</strong> e
+        <strong> Cancelar</strong>. Use Abrir quando quiser conversar com o paciente pelo próprio
+        chat antes de finalizar; use Atendida diretamente se já enviou o link por fora.
+      </p>
+
+      <h4>Fluxo A — Abrir e conversar pelo chat (recomendado)</h4>
       <ol>
-        <li>Acesse <strong>Admin → Aguardando Link</strong>.</li>
-        <li>Veja a lista (mais antiga primeiro) com nome, telefone, categoria, hospital e tempo de espera.</li>
-        <li>
-          Combine o link da videochamada por fora da plataforma (Meet, Zoom, etc.) e envie ao
-          paciente pelo canal mais apropriado.
-        </li>
-        <li>
-          Anote o link/data/horário no campo <em>Observações</em> da linha (clique pra editar; salva ao sair do campo).
-        </li>
-        <li>
-          Clique em <strong>"Atendida"</strong>. A solicitação sai da fila <em>e</em> a plataforma
-          <strong> cria automaticamente uma nova conversa em fila</strong> para o especialista da
-          mesma categoria do solicitante. As observações que você anotou viram uma mensagem de
-          sistema na conversa, então o especialista vê o link/data assim que puxar.
-        </li>
+        <li>Clique em <strong>Abrir</strong>. A plataforma cria uma conversa atribuída a você e te leva pro chat.</li>
+        <li>Combine o link de videochamada (Meet, Zoom etc.) e envie pelo chat — o paciente recebe no WhatsApp.</li>
+        <li>Volte para <em>Admin → Aguardando Link</em> (ainda aparece na lista enquanto você conversa).</li>
+        <li>Quando terminar, clique em <strong>"Atendida"</strong>. A <strong>mesma conversa</strong> volta para a fila do especialista da categoria com <em>todo o histórico de mensagens preservado</em>.</li>
       </ol>
+
+      <h4>Fluxo B — Já enviei o link por fora</h4>
+      <ol>
+        <li>Anote o link/data/horário no campo <em>Observações</em> da linha (clique pra editar; salva ao sair do campo).</li>
+        <li>Clique em <strong>"Atendida"</strong> direto. A plataforma cria uma <strong>nova conversa em fila</strong> para o especialista, com uma <em>mensagem de sistema</em> contendo as observações.</li>
+      </ol>
+
       <blockquote>
-        Exemplo: o paciente pediu videochamada com médico → cai em "Aguardando Link" →
-        admin envia o link e clica "Atendida" → uma conversa entra na fila <em>Médico</em> →
-        o médico puxa, vê a mensagem de sistema com o link, e faz o acompanhamento (texto e/ou
-        vídeo).
+        Em ambos os fluxos, ao final o atendimento volta para a fila do especialista da
+        categoria pedida — ele puxa, vê o que aconteceu, e faz o acompanhamento.
+      </blockquote>
+      <blockquote>
+        <strong>Atenção:</strong> não use o botão "Encerrar" do chat enquanto estiver tratando
+        do agendamento — ele dispara a pesquisa de satisfação ao paciente como se o atendimento
+        tivesse terminado. O caminho correto é voltar à lista <em>Aguardando Link</em> e clicar
+        em "Atendida".
       </blockquote>
 
       <h3>3.4.2. Cancelar</h3>

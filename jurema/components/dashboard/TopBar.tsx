@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Search } from "lucide-react";
-import { BASE_PATH } from "@/lib/basePath";
 
 export function DashboardTopBar({ updatedLabel }: { updatedLabel: string }) {
   const router = useRouter();
@@ -13,8 +12,8 @@ export function DashboardTopBar({ updatedLabel }: { updatedLabel: string }) {
     e.preventDefault();
     const value = q.trim();
     const url = value
-      ? `${BASE_PATH}/caixa?q=${encodeURIComponent(value)}`
-      : `${BASE_PATH}/caixa`;
+      ? `/caixa?q=${encodeURIComponent(value)}`
+      : `/caixa`;
     router.push(url as never);
   }
 

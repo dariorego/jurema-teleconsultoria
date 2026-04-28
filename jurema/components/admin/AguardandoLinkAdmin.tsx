@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, MessageSquare, X } from "lucide-react";
 import { apiUrl } from "@/lib/basePath";
 
 export type SolicitacaoLink = {
@@ -52,6 +52,20 @@ export function AguardandoLinkAdmin({ initial }: { initial: SolicitacaoLink[] })
     }
     start(() => router.refresh());
     return j as { ok: boolean; conversa_id?: string | null; message?: string };
+  }
+
+  async function abrir(s: SolicitacaoLink) {
+    setSavingId(s.id);
+    const res = await fetch(apiUrl(`/api/admin/solicitacoes/${s.id}/abrir`), {
+      method: "POST",
+    });
+    setSavingId(null);
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.conversa_id) {
+      alert(`Erro ao abrir conversa: ${j.error ?? res.statusText}`);
+      return;
+    }
+    router.push(`/chat/${j.conversa_id}` as never);
   }
 
   async function marcarAtendida(s: SolicitacaoLink) {
@@ -123,10 +137,19 @@ export function AguardandoLinkAdmin({ initial }: { initial: SolicitacaoLink[] })
                   <td className="px-3 py-2 text-right space-x-1 whitespace-nowrap">
                     <button
                       type="button"
+                      onClick={() => abrir(s)}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-whatsapp-accent text-whatsapp-accent hover:bg-whatsapp-accent/10 disabled:opacity-50"
+                      title="Abrir conversa para enviar o link via chat"
+                    >
+                      <MessageSquare size={13} /> Abrir
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => marcarAtendida(s)}
                       disabled={saving}
                       className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-whatsapp-accent text-white hover:opacity-90 disabled:opacity-50"
-                      title="Marcar como atendida (admin enviou o link)"
+                      title="Marcar como atendida (link já enviado) e devolver à fila do especialista"
                     >
                       <CheckCircle2 size={13} /> Atendida
                     </button>

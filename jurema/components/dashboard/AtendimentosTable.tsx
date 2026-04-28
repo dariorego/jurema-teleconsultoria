@@ -41,7 +41,6 @@ export function AtendimentosTable({
   paramPrefix,
   tempoLabel,
   tempoTone = "warn",
-  basePath = "",
   showLink = true,
 }: {
   title: string;
@@ -53,7 +52,6 @@ export function AtendimentosTable({
   paramPrefix: string;
   tempoLabel: string;
   tempoTone?: keyof typeof TONE;
-  basePath?: string;
   showLink?: boolean;
 }) {
   const now = Date.now();
@@ -154,7 +152,7 @@ export function AtendimentosTable({
                     {showLink && (
                       <td style={{ padding: "10px 24px", textAlign: "right" }}>
                         <Link
-                          href={`${basePath}/chat/${r.id}` as never}
+                          href={`/chat/${r.id}` as never}
                           style={{
                             display: "inline-block",
                             padding: "5px 12px",

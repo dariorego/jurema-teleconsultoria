@@ -1,6 +1,5 @@
 import { MessageSquare, Clock, Users, Zap } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { BASE_PATH } from "@/lib/basePath";
 import { KpiCard, type Kpi } from "@/components/dashboard/KpiCard";
 import { Panel } from "@/components/dashboard/Panel";
 import { CategoryChart, type CategoryRow } from "@/components/dashboard/CategoryChart";
@@ -368,7 +367,6 @@ export default async function Dashboard({
           paramPrefix="f"
           tempoLabel="Aberta há"
           tempoTone="warn"
-          basePath={BASE_PATH}
         />
         <AtendimentosTable
           title="Em atendimento"
@@ -384,7 +382,6 @@ export default async function Dashboard({
           paramPrefix="a"
           tempoLabel="Em atendimento há"
           tempoTone="accent"
-          basePath={BASE_PATH}
         />
         <AtendimentosTable
           title="Finalizados"
@@ -400,7 +397,6 @@ export default async function Dashboard({
           paramPrefix="x"
           tempoLabel="Finalizada há"
           tempoTone="muted"
-          basePath={BASE_PATH}
         />
       </div>
 

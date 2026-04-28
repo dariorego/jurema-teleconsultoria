@@ -410,25 +410,40 @@ Essas solicitações ficam visíveis em **Admin → Aguardando Link**.
 A sidebar mostra um **badge vermelho** ao lado de "Admin" quando há
 pendências, e a tab "Aguardando Link" também mostra o contador.
 
-### Como atender
+### Dois fluxos de atendimento
 
-1. Acesse **Admin → Aguardando Link**.
-2. Veja a lista (mais antiga primeiro) com nome, telefone, categoria,
-   hospital e tempo de espera.
-3. Combine o link de videochamada por fora da plataforma (Meet, Zoom, etc.)
-   e envie ao paciente pelo canal mais apropriado.
-4. Anote o link/data/horário no campo **Observações** da linha (clique pra
+Cada linha tem três botões: **Abrir**, **Atendida** e **Cancelar**. Use
+**Abrir** quando quiser conversar com o paciente pelo próprio chat antes
+de finalizar; use **Atendida** diretamente se já enviou o link por fora.
+
+#### Fluxo A — Abrir e conversar pelo chat (recomendado)
+
+1. Clique em **Abrir**. A plataforma cria uma conversa atribuída a você e
+   te leva pro chat.
+2. Combine o link de videochamada (Meet, Zoom etc.) e envie pelo chat — o
+   paciente recebe no WhatsApp.
+3. Volte para **Admin → Aguardando Link** (ainda aparece na lista enquanto
+   você conversa).
+4. Quando terminar, clique em **"Atendida"**. A *mesma conversa* volta para
+   a fila do especialista da categoria com **todo o histórico de mensagens
+   preservado**.
+
+#### Fluxo B — Já enviei o link por fora
+
+1. Anote o link/data/horário no campo **Observações** da linha (clique pra
    editar; salva ao sair do campo).
-5. Clique em **"Atendida"**. A solicitação sai da fila *e* a plataforma
-   **cria automaticamente uma nova conversa em fila** para o especialista
-   da mesma categoria do solicitante. As observações que você anotou viram
-   uma mensagem de sistema na conversa, então o especialista vê o link/data
-   assim que puxar.
+2. Clique em **"Atendida"** direto. A plataforma cria uma **nova conversa
+   em fila** para o especialista, com uma *mensagem de sistema* contendo
+   as observações.
 
-> **Exemplo:** o paciente pediu videochamada com médico → cai em "Aguardando
-> Link" → admin envia o link e clica "Atendida" → uma conversa entra na
-> fila *Médico* → o médico puxa, vê a mensagem de sistema com o link, e
-> faz o acompanhamento (texto e/ou vídeo).
+> Em ambos os fluxos, ao final o atendimento volta para a fila do
+> especialista da categoria pedida — ele puxa, vê o que aconteceu, e faz
+> o acompanhamento.
+
+> **Atenção:** não use o botão "Encerrar" do chat enquanto estiver
+> tratando do agendamento — ele dispara a pesquisa de satisfação ao
+> paciente como se o atendimento tivesse terminado. O caminho correto é
+> voltar à lista *Aguardando Link* e clicar em "Atendida".
 
 ### Cancelar
 
