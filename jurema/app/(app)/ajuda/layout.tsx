@@ -47,13 +47,15 @@ export default async function AjudaLayout({
             </nav>
           )}
           <a
-            href={`${BASE_PATH}/docs/manual.docx`}
+            href={`${BASE_PATH}/docs/manual.pdf`}
             download
+            target="_blank"
+            rel="noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm text-whatsapp-muted hover:text-whatsapp-text border border-whatsapp-border hover:bg-whatsapp-panel2"
-            title="Baixar versão completa em .docx"
+            title="Baixar versão completa em PDF"
           >
             <Download size={14} />
-            Baixar .docx
+            Baixar PDF
           </a>
         </div>
       </div>
