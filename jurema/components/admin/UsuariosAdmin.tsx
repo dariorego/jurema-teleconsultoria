@@ -87,11 +87,12 @@ export function UsuariosAdmin({
           role: form.role,
         }),
       });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         setErro(`Erro: ${j.error}${j.detail ? ` — ${j.detail}` : ""}`);
         return;
       }
+      if (j.message) alert(j.message);
     } else {
       const res = await fetch(apiUrl(`/api/admin/usuarios/${form.user_id}`), {
         method: "PATCH",
@@ -110,6 +111,28 @@ export function UsuariosAdmin({
     }
     setFormOpen(false);
     start(() => router.refresh());
+  }
+
+  async function reenviarConvite(e: Especialista) {
+    const res = await fetch(apiUrl(`/api/admin/usuarios/${e.user_id}/reenviar`), {
+      method: "POST",
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(`Erro: ${j.error}${j.detail ? ` — ${j.detail}` : ""}`);
+      return;
+    }
+    let msg = j.message ?? "Link gerado.";
+    if (j.action_link) {
+      // SMTP pode não estar configurado; oferece o link pra cópia manual.
+      msg += `\n\nLink:\n${j.action_link}\n\n(Já copiado para a área de transferência)`;
+      try {
+        await navigator.clipboard.writeText(j.action_link);
+      } catch {
+        /* fallback: usuário copia manualmente */
+      }
+    }
+    alert(msg);
   }
 
   async function toggleAtivo(e: Especialista) {
@@ -176,13 +199,21 @@ export function UsuariosAdmin({
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right space-x-2">
+                <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
                   <button
                     type="button"
                     onClick={() => abrirEditar(e)}
                     className="text-xs px-2 py-1 rounded border border-whatsapp-border text-whatsapp-text hover:bg-whatsapp-panel2"
                   >
                     Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => reenviarConvite(e)}
+                    title="Gera novo link de definição de senha e envia por email"
+                    className="text-xs px-2 py-1 rounded border border-whatsapp-border text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2"
+                  >
+                    Reenviar convite
                   </button>
                   <button
                     type="button"
