@@ -23,7 +23,18 @@ type Row = {
   } | null;
 };
 
-export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string }) {
+export type Categoria = { codigo: string; rotulo: string };
+
+export function CaixaLive({
+  initial,
+  userId,
+  categorias = [],
+}: {
+  initial: Row[];
+  userId: string;
+  categorias?: Categoria[];
+}) {
+  const catMap = new Map(categorias.map((c) => [c.codigo, c.rotulo]));
   const router = useRouter();
   const supabase = createSupabaseBrowser();
   const [rows, setRows] = useState<Row[]>(initial);
@@ -101,7 +112,7 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
       <Secao titulo={`Fila (${fila.length})`}>
         {fila.length === 0 && <Vazio texto="Nenhuma conversa na fila." />}
         {fila.map((r) => (
-          <Cartao key={r.id} r={r}>
+          <Cartao key={r.id} r={r} categoriaRotulo={catMap.get(r.especialidade) ?? r.especialidade}>
             <button
               type="button"
               onClick={() => puxar(r.id)}
@@ -117,7 +128,7 @@ export function CaixaLive({ initial, userId }: { initial: Row[]; userId: string 
       <Secao titulo={`Minhas em atendimento (${minhas.length})`}>
         {minhas.length === 0 && <Vazio texto="Você não está em nenhum atendimento." />}
         {minhas.map((r) => (
-          <Cartao key={r.id} r={r}>
+          <Cartao key={r.id} r={r} categoriaRotulo={catMap.get(r.especialidade) ?? r.especialidade}>
             <Link
               href={`/chat/${r.id}` as never}
               className="px-3 py-1.5 rounded bg-whatsapp-panel2 text-whatsapp-text text-sm border border-whatsapp-border transition hover:border-whatsapp-accent"
@@ -158,10 +169,12 @@ function Cartao({
   r,
   children,
   dim,
+  categoriaRotulo,
 }: {
   r: Row;
   children: React.ReactNode;
   dim?: boolean;
+  categoriaRotulo?: string;
 }) {
   const nome =
     r.paciente ? `${r.paciente.primeiro_nome} ${r.paciente.ultimo_nome ?? ""}`.trim() : r.id;
@@ -172,9 +185,16 @@ function Cartao({
         dim ? "opacity-60" : ""
       }`}
     >
-      <div>
-        <div className="text-whatsapp-text font-medium">{nome}</div>
-        <div className="text-xs text-whatsapp-muted">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-whatsapp-text font-medium">{nome}</span>
+          {categoriaRotulo && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-whatsapp-accent/15 text-whatsapp-accent">
+              {categoriaRotulo}
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-whatsapp-muted mt-0.5">
           {r.paciente?.wa_id}
           {r.paciente?.hospital ? ` • ${r.paciente.hospital}` : ""}
           {" • "}

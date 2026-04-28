@@ -96,6 +96,7 @@ export default async function CaixaPage({
     { count: emAtendimento },
     { data: encerradas },
     { data: especialistas },
+    { data: categorias },
   ] = await Promise.all([
     query,
     supabase
@@ -123,6 +124,9 @@ export default async function CaixaPage({
           .eq("ativo", true)
           .order("nome")
       : Promise.resolve({ data: [] as EspecialistaOption[] }),
+    supabase
+      .from("jurema_especialidades")
+      .select("codigo, rotulo"),
   ]);
 
   const durations = (encerradas ?? [])
@@ -150,6 +154,7 @@ export default async function CaixaPage({
           paciente: Array.isArray(c.paciente) ? (c.paciente[0] ?? null) : c.paciente,
         }))}
         userId={user.id}
+        categorias={categorias ?? []}
       />
     </div>
   );
