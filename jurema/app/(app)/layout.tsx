@@ -19,6 +19,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const isAdmin = perfil?.role === "admin";
+
+  // Contador para badge na sidebar quando admin: solicitacoes de
+  // videoconferencia pendentes ("Aguardando Link").
+  let adminBadge = 0;
+  if (isAdmin) {
+    const { count } = await supabase
+      .from("jurema_solicitacoes")
+      .select("*", { count: "exact", head: true })
+      .eq("modalidade", "teleatendimento")
+      .eq("status", "pendente");
+    adminBadge = count ?? 0;
+  }
+
   const sidebar = (
     <>
       <div className="sb-header p-4 border-b border-whatsapp-border">
@@ -40,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           )}
         </div>
       </div>
-      <SidebarNav isAdmin={perfil?.role === "admin"} />
+      <SidebarNav isAdmin={isAdmin} adminBadge={adminBadge} />
       <div className="p-2 border-t border-whatsapp-border space-y-1">
         <ThemeToggle />
         <PerfilLink />

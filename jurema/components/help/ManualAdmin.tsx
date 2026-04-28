@@ -86,6 +86,43 @@ export function ManualAdmin() {
         de conversas atribuídas a esse profissional.
       </blockquote>
 
+      <h2>3.4. Caixa "Aguardando Link" (videoconferências)</h2>
+      <p>
+        Quando o paciente escolhe <strong>videochamada</strong> no fluxo do bot, a plataforma
+        responde "uma atendente entrará em contato para confirmar o link, data e horário" e
+        registra a solicitação como <em>pendente</em>. Essas solicitações ficam visíveis em
+        <strong> Admin → Aguardando Link</strong>.
+      </p>
+      <p>
+        A sidebar mostra um <strong>contador vermelho</strong> ao lado de "Admin" quando há
+        videoconferências pendentes — assim você sabe quando tem trabalho a fazer sem precisar
+        entrar na seção.
+      </p>
+
+      <h3>3.4.1. Como atender</h3>
+      <ol>
+        <li>Acesse <strong>Admin → Aguardando Link</strong>.</li>
+        <li>Veja a lista (mais antiga primeiro) com nome, telefone, categoria, hospital e tempo de espera.</li>
+        <li>
+          Combine o link da videochamada por fora da plataforma (Meet, Zoom, etc.) e envie ao
+          paciente pelo canal mais apropriado.
+        </li>
+        <li>
+          Anote o link/data/horário no campo <em>Observações</em> da linha (clique pra editar; salva ao sair do campo).
+        </li>
+        <li>
+          Clique em <strong>"Atendida"</strong> — a solicitação sai da fila e é marcada como
+          <code>concluido</code>. O badge da sidebar diminui automaticamente.
+        </li>
+      </ol>
+
+      <h3>3.4.2. Cancelar</h3>
+      <p>
+        Use o botão <strong>"Cancelar"</strong> se a solicitação não puder ser atendida (paciente
+        desistiu, contato inválido, duplicidade). Status vira <code>cancelado</code>; histórico
+        permanece para auditoria.
+      </p>
+
       <h2>4. Gerenciar categorias</h2>
       <p>
         Acesse <strong>Admin → Categorias</strong>. Categorias são as áreas de atuação dos

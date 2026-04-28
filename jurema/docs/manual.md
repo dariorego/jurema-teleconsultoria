@@ -311,7 +311,12 @@ próximo login.
 # 8. Administração (apenas admins)
 
 A área **Admin** está no menu lateral, visível apenas para usuários com
-`role='admin'`. Tem duas abas:
+`role='admin'`. Tem três abas: **Usuários**, **Categorias** e
+**Aguardando Link** (videoconferências pendentes).
+
+Quando há videoconferências pendentes, um **badge vermelho** com o número
+aparece ao lado de "Admin" na sidebar e na tab "Aguardando Link" — assim
+o admin sabe quando há trabalho a fazer sem precisar entrar na seção.
 
 ## 8.1. Usuários
 
@@ -394,6 +399,34 @@ criação de usuários.
 > **Por quê soft-delete?** Conversas e solicitações têm chave estrangeira
 > obrigatória apontando para `jurema_especialidades.codigo`. Apagar uma
 > categoria com histórico geraria erro de integridade.
+
+## 8.3. Aguardando Link (videoconferências)
+
+Quando o paciente escolhe **videochamada** no fluxo do bot, a plataforma
+responde "uma atendente entrará em contato para confirmar o link, data e
+horário" e registra a solicitação como pendente. **Não cria conversa**.
+Essas solicitações ficam visíveis em **Admin → Aguardando Link**.
+
+A sidebar mostra um **badge vermelho** ao lado de "Admin" quando há
+pendências, e a tab "Aguardando Link" também mostra o contador.
+
+### Como atender
+
+1. Acesse **Admin → Aguardando Link**.
+2. Veja a lista (mais antiga primeiro) com nome, telefone, categoria,
+   hospital e tempo de espera.
+3. Combine o link de videochamada por fora da plataforma (Meet, Zoom, etc.)
+   e envie ao paciente pelo canal mais apropriado.
+4. Anote o link/data/horário no campo **Observações** da linha (clique pra
+   editar; salva ao sair do campo).
+5. Clique em **"Atendida"** — sai da fila, status muda para `concluido` e
+   o badge da sidebar diminui automaticamente.
+
+### Cancelar
+
+Use o botão **"Cancelar"** quando a solicitação não puder ser atendida
+(paciente desistiu, contato inválido, duplicidade). Status vira `cancelado`;
+histórico permanece para auditoria.
 
 ---
 

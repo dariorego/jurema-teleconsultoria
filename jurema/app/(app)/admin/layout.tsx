@@ -21,6 +21,13 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
+  // Count de videoconferências pendentes para badge na tab.
+  const { count: aguardandoLinkCount } = await supabase
+    .from("jurema_solicitacoes")
+    .select("*", { count: "exact", head: true })
+    .eq("modalidade", "teleatendimento")
+    .eq("status", "pendente");
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div className="flex items-baseline justify-between gap-4 flex-wrap">
@@ -37,6 +44,17 @@ export default async function AdminLayout({
             className="px-3 py-1.5 rounded text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2"
           >
             Categorias
+          </Link>
+          <Link
+            href={"/admin/aguardando-link" as never}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded text-whatsapp-muted hover:text-whatsapp-text hover:bg-whatsapp-panel2"
+          >
+            <span>Aguardando Link</span>
+            {(aguardandoLinkCount ?? 0) > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold tabular-nums">
+                {aguardandoLinkCount}
+              </span>
+            )}
           </Link>
         </nav>
       </div>
